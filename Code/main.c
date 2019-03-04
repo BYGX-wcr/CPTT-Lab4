@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 extern FILE* yyin;
+int yylex();
 
 // main function for flex
 int main(int argc, char** argv) {

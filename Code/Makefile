@@ -1,4 +1,4 @@
-# GNU make手册：http://www.gnu.org/software/make/manual/make.html
+ GNU make手册：http://www.gnu.org/software/make/manual/make.html
 # ************ 遇到不明白的地方请google以及阅读手册 *************
 
 # 编译器设定和编译选项
@@ -42,4 +42,4 @@ clean:
 	rm -f *~
 
 token-scanner: lexical
-	gcc main.c $(LFC) -lfl -o token-scanner.o
+	gcc main.c $(LFC) -lfl -o token-scanner
