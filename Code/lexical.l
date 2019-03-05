@@ -1,14 +1,14 @@
 %{
     int line_num = 1;
-    int num_func();
+    int int_func();
+    int float_func();
     int id_func();
     int str_func();
     int error_func();
 %}
 
 
-/* regular definitions   '\r'  */
-newline     ^.*
+/* regular definitions */
 delim       [ \t\r\n]
 ws          {delim}+
 letter      [a-zA-Z]
@@ -20,7 +20,6 @@ bcomment    \/\*(.|\n)*\*\/
 comment     {lcomment}|{bcomment}
 
 /* Tokens definitions  */
-/* ((0\.{digit})|([1-9]+{digit}*\.{digit}+))   */
 INT         (0|[1-9]{digit}*)    
 FLOAT       {INT}\.{digit}+
 
@@ -54,8 +53,8 @@ FLOAT       {INT}\.{digit}+
 "if"        {printf("if\n");}
 "else"      {printf("else\n");}
 "while"     {printf("while\n");}
-{INT}       {printf("num %d\n",atoi(yytext));}
-{FLOAT}     {printf("FLOAT %s\n",yytext);}
+{INT}       {int_func();}
+{FLOAT}     {float_func();}
 {id}        {id_func();}
 {ws}        {}
 {str}       {str_func();}
@@ -65,26 +64,32 @@ FLOAT       {INT}\.{digit}+
 
 %%
 
-int num_func()
+int int_func()
 {
-    printf("%d\n", atoi(yytext));
+    printf("INT %d\n", atoi(yytext));
+    return 1;
+}
+
+int float_func()
+{
+    printf("FLOAT %s\n", yytext);
     return 1;
 }
 
 int id_func()
 {
-    printf("%s\n", yytext);
+    printf("ID %s\n", yytext);
     return 1;
 }
 
 int str_func()
 {
-    printf(" %s \n", yytext);
+    printf("STR %s \n", yytext);
     return 1;
 }
 
 int error_func()
 {
-    printf("Error type A at Line %d: Mysterious character \"%s\"\n",line_num,yytext);
+    printf("Error type A at Line %d: Mysterious character \"%s\"\n", line_num, yytext);
     return 1;
 }
