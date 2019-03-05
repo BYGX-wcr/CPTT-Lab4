@@ -1,53 +1,90 @@
 %{
+    int line_num = 1;
     int num_func();
     int id_func();
     int str_func();
     int error_func();
 %}
 
-/* regular definitions */
-delim       [ \n\t]
+
+/* regular definitions   '\r'  */
+newline     ^.*
+delim       [ \t\r\n]
 ws          {delim}+
 letter      [a-zA-Z]
 digit       [0-9]
-id          (_|{letter})(_|{letter}|{digit})*
-num         [1-9]{digit}*
+id          (_|{letter})(_|{letter}|{digit})*           
 str         \"(.)*\"
 lcomment    \/\/.*$
 bcomment    \/\*(.|\n)*\*\/
 comment     {lcomment}|{bcomment}
 
-%%
+/* Tokens definitions  */
+/* ((0\.{digit})|([1-9]+{digit}*\.{digit}+))   */
+INT         (0|[1-9]{digit}*)    
+FLOAT       {INT}\.{digit}+
 
-{num}       {num_func();}
+%%
+";"         {printf("%s\n",yytext);}
+","         {printf("%s\n",yytext);}
+"="         {printf("%s\n",yytext);}
+">"         {printf("%s\n",yytext);}
+"<"         {printf("%s\n",yytext);}
+">="        {printf("%s\n",yytext);}
+"<="        {printf("%s\n",yytext);}
+"=="        {printf("%s\n",yytext);}
+"!="        {printf("%s\n",yytext);}
+"+"         {printf("%s\n",yytext);}
+"-"         {printf("%s\n",yytext);}
+"/"         {printf("%s\n",yytext);}
+"&&"        {printf("%s\n",yytext);}
+"||"        {printf("%s\n",yytext);}
+"."         {printf("%s\n",yytext);}
+"!"         {printf("%s\n",yytext);}
+"("         {printf("%s\n",yytext);}
+")"         {printf("%s\n",yytext);}
+"["         {printf("%s\n",yytext);}
+"]"         {printf("%s\n",yytext);}
+"{"         {printf("%s\n",yytext);}
+"}"         {printf("%s\n",yytext);}
+"float"     {printf("float\n");}
+"int"       {printf("int\n");}
+"struct"    {printf("struct\n");}
+"return"    {printf("return\n");}
+"if"        {printf("if\n");}
+"else"      {printf("else\n");}
+"while"     {printf("while\n");}
+{INT}       {printf("num %d\n",atoi(yytext));}
+{FLOAT}     {printf("FLOAT %s\n",yytext);}
 {id}        {id_func();}
 {ws}        {}
 {str}       {str_func();}
-{lcomment}  {printf("Find a line comment %s\n", yytext);}
-{bcomment}  {printf("Find a block comment %s\n", yytext);}
+{lcomment}  {printf("line comment %s\n", yytext);}
+{bcomment}  {printf("block comment %s\n", yytext);}
 .           {error_func();}
 
 %%
 
 int num_func()
 {
-    printf("Find a number %d\n", atoi(yytext));
+    printf("%d\n", atoi(yytext));
     return 1;
 }
 
 int id_func()
 {
-    printf("Find a identifier %s\n", yytext);
+    printf("%s\n", yytext);
     return 1;
 }
 
 int str_func()
 {
-    printf("Find a string %s\n", yytext);
+    printf(" %s \n", yytext);
     return 1;
 }
 
 int error_func()
 {
+    printf("Error type A at Line %d: Mysterious character \"%s\"\n",line_num,yytext);
     return 1;
 }
