@@ -11,7 +11,6 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
-
     /* start token analysis */
     while (yylex() != 0);
     return 0;

@@ -43,3 +43,4 @@ clean:
 
 token-scanner: lexical
 	gcc main.c $(LFC) -lfl -o token-scanner
+	./token-scanner < ../Test/test1.cmm
