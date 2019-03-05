@@ -1,7 +1,8 @@
 #include <stdio.h>
 
 extern FILE* yyin;
-int yylex();
+extern int yylineno;
+extern int yylex();
 
 // main function for flex
 int main(int argc, char** argv) {
@@ -12,6 +13,7 @@ int main(int argc, char** argv) {
         }
     }
     /* start token analysis */
+    yylineno = 1;
     while (yylex() != 0);
     return 0;
 }

@@ -175,8 +175,32 @@ extern FILE *yyin, *yyout;
 #define EOB_ACT_END_OF_FILE 1
 #define EOB_ACT_LAST_MATCH 2
 
+<<<<<<< HEAD
+    /* Note: We specifically omit the test for yy_rule_can_match_eol because it requires
+     *       access to the local variable yy_act. Since yyless() is a macro, it would break
+     *       existing scanners that call yyless() from OUTSIDE yylex. 
+     *       One obvious solution it to make yy_act a global. I tried that, and saw
+     *       a 5% performance hit in a non-yylineno scanner, because yy_act is
+     *       normally declared as a register variable-- so it is not worth it.
+     */
+    #define  YY_LESS_LINENO(n) \
+            do { \
+                int yyl;\
+                for ( yyl = n; yyl < yyleng; ++yyl )\
+                    if ( yytext[yyl] == '\n' )\
+                        --yylineno;\
+            }while(0)
+    #define YY_LINENO_REWIND_TO(dst) \
+            do {\
+                const char *p;\
+                for ( p = yy_cp-1; p >= (dst); --p)\
+                    if ( *p == '\n' )\
+                        --yylineno;\
+            }while(0)
+=======
     #define YY_LESS_LINENO(n)
     #define YY_LINENO_REWIND_TO(ptr)
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
     
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
@@ -506,6 +530,15 @@ static yyconst flex_int16_t yy_chk[153] =
        79,   79
     } ;
 
+<<<<<<< HEAD
+/* Table of booleans, true if rule could match eol. */
+static yyconst flex_int32_t yy_rule_can_match_eol[39] =
+    {   0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0,     };
+
+=======
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
 static yy_state_type yy_last_accepting_state;
 static char *yy_last_accepting_cpos;
 
@@ -523,6 +556,15 @@ char *yytext;
 #line 1 "./lexical.l"
 #line 2 "./lexical.l"
     int line_num = 1;
+<<<<<<< HEAD
+    int num_func();
+    int id_func();
+    int str_func();
+    int error_func();
+/* regular definitions   '\r'  */
+/* Tokens definitions  */
+#line 558 "./lex.yy.c"
+=======
     int int_func();
     int float_func();
     int id_func();
@@ -531,6 +573,7 @@ char *yytext;
 /* regular definitions */
 /* Tokens definitions  */
 #line 534 "./lex.yy.c"
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
 
 #define INITIAL 0
 
@@ -750,7 +793,11 @@ YY_DECL
 	{
 #line 26 "./lexical.l"
 
+<<<<<<< HEAD
+#line 778 "./lex.yy.c"
+=======
 #line 754 "./lex.yy.c"
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -796,6 +843,19 @@ yy_find_action:
 
 		YY_DO_BEFORE_ACTION;
 
+<<<<<<< HEAD
+		if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )
+			{
+			yy_size_t yyl;
+			for ( yyl = 0; yyl < yyleng; ++yyl )
+				if ( yytext[yyl] == '\n' )
+					   
+    yylineno++;
+;
+			}
+
+=======
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
 do_action:	/* This label is used only to access EOF actions. */
 
 		switch ( yy_act )
@@ -955,12 +1015,20 @@ YY_RULE_SETUP
 case 30:
 YY_RULE_SETUP
 #line 56 "./lexical.l"
+<<<<<<< HEAD
+{printf("num %d\n",atoi(yytext));}
+=======
 {int_func();}
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
 #line 57 "./lexical.l"
+<<<<<<< HEAD
+{printf("FLOAT %s\n",yytext);}
+=======
 {float_func();}
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
@@ -1002,7 +1070,11 @@ YY_RULE_SETUP
 #line 65 "./lexical.l"
 ECHO;
 	YY_BREAK
+<<<<<<< HEAD
+#line 1040 "./lex.yy.c"
+=======
 #line 1006 "./lex.yy.c"
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1366,6 +1438,13 @@ static int yy_get_next_buffer (void)
 
 	*--yy_cp = (char) c;
 
+<<<<<<< HEAD
+    if ( c == '\n' ){
+        --yylineno;
+    }
+
+=======
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
 	(yytext_ptr) = yy_bp;
 	(yy_hold_char) = *yy_cp;
 	(yy_c_buf_p) = yy_cp;
@@ -1443,6 +1522,14 @@ static int yy_get_next_buffer (void)
 	*(yy_c_buf_p) = '\0';	/* preserve yytext */
 	(yy_hold_char) = *++(yy_c_buf_p);
 
+<<<<<<< HEAD
+	if ( c == '\n' )
+		   
+    yylineno++;
+;
+
+=======
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
 	return c;
 }
 #endif	/* ifndef YY_NO_INPUT */
@@ -1909,6 +1996,12 @@ static int yy_init_globals (void)
      * This function is called from yylex_destroy(), so don't allocate here.
      */
 
+<<<<<<< HEAD
+    /* We do not touch yylineno unless the option is enabled. */
+    yylineno =  1;
+    
+=======
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
     (yy_buffer_stack) = 0;
     (yy_buffer_stack_top) = 0;
     (yy_buffer_stack_max) = 0;
@@ -2007,6 +2100,11 @@ void yyfree (void * ptr )
 
 
 
+<<<<<<< HEAD
+int num_func()
+{
+    printf("%d\n", atoi(yytext));
+=======
 int int_func()
 {
     printf("INT %d\n", atoi(yytext));
@@ -2016,23 +2114,36 @@ int int_func()
 int float_func()
 {
     printf("FLOAT %s\n", yytext);
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
     return 1;
 }
 
 int id_func()
 {
+<<<<<<< HEAD
+    printf("%s\n", yytext);
+=======
     printf("ID %s\n", yytext);
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
     return 1;
 }
 
 int str_func()
 {
+<<<<<<< HEAD
+    printf(" %s \n", yytext);
+=======
     printf("STR %s \n", yytext);
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
     return 1;
 }
 
 int error_func()
 {
+<<<<<<< HEAD
+    printf("Error type A at Line %d: Mysterious character \"%s\"\n",yylineno,yytext);
+=======
     printf("Error type A at Line %d: Mysterious character \"%s\"\n", line_num, yytext);
+>>>>>>> abe55690438cb9f512ba3b485b1fb363a0637ecc
     return 1;
 }

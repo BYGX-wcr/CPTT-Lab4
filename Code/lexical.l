@@ -1,5 +1,4 @@
 %{
-    int line_num = 1;
     int int_func();
     int float_func();
     int id_func();
@@ -7,6 +6,7 @@
     int error_func();
 %}
 
+%option  yylineno
 
 /* regular definitions */
 delim       [ \t\r\n]
@@ -90,6 +90,6 @@ int str_func()
 
 int error_func()
 {
-    printf("Error type A at Line %d: Mysterious character \"%s\"\n", line_num, yytext);
+    printf("Error type A at Line %d: Mysterious character \"%s\"\n", yylineno, yytext);
     return 1;
 }
