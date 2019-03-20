@@ -14,6 +14,7 @@ int main(int argc, char** argv) {
     }
     /* start token analysis */
     yylineno = 1;
-    while (yylex() != 0);
+    yyrestart(yyin);
+    yyparse();
     return 0;
 }
