@@ -1,4 +1,6 @@
 %{
+    #include "syntax.tab.h"
+
     int int_func();
     int float_func();
     int id_func();
@@ -20,8 +22,8 @@ bcomment    \/\*(.|\n)*\*\/
 comment     {lcomment}|{bcomment}
 
 /* Tokens definitions  */
-INT         (0|[1-9]{digit}*)    
-FLOAT       {INT}\.{digit}+
+inum         (0|[1-9]{digit}*)    
+fnum       {INT}\.{digit}+
 
 %%
 ";"         {printf("%s\n",yytext);}
@@ -53,8 +55,8 @@ FLOAT       {INT}\.{digit}+
 "if"        {printf("if\n");}
 "else"      {printf("else\n");}
 "while"     {printf("while\n");}
-{INT}       {int_func();}
-{FLOAT}     {float_func();}
+{inum}       {int_func();}
+{fnum}     {float_func();}
 {id}        {id_func();}
 {ws}        {}
 {str}       {str_func();}
