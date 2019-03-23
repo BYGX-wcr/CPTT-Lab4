@@ -3,6 +3,8 @@
     #include "lex.yy.c"
 %}
 
+%locations
+
 /* declared types */
 %union {
     int type_int;
