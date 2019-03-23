@@ -34,39 +34,39 @@ fnum        {inum}\.{digit}+
 
 %%
 "\n"        { yycolumn = 1; }
-";"         { printf("%s\n", yytext); }
-","         { printf("%s\n", yytext); }
-"="         { printf("%s\n", yytext); }
-">"         { printf("%s\n", yytext); }
-"<"         { printf("%s\n", yytext); }
-">="        { printf("%s\n", yytext); }
-"<="        { printf("%s\n", yytext); }
-"=="        { printf("%s\n", yytext); }
-"!="        { printf("%s\n", yytext); }
+";"         { printf("%s\n", yytext); return SEMI; }
+","         { printf("%s\n", yytext); return COMMA; }
+"="         { printf("%s\n", yytext); return ASSIGNOP; }
+">"         { printf("%s\n", yytext); return RELOP; }
+"<"         { printf("%s\n", yytext); return RELOP; }
+">="        { printf("%s\n", yytext); return RELOP; }
+"<="        { printf("%s\n", yytext); return RELOP; }
+"=="        { printf("%s\n", yytext); return RELOP; }
+"!="        { printf("%s\n", yytext); return RELOP; }
 "+"         { printf("%s\n", yytext); return PLUS; }
 "-"         { printf("%s\n", yytext); return MINUS; }
 "*"         { printf("%s\n", yytext); return STAR; }
 "/"         { printf("%s\n", yytext); return DIV; }
-"&&"        { printf("%s\n", yytext); }
-"||"        { printf("%s\n", yytext); }
-"."         { printf("%s\n", yytext); }
-"!"         { printf("%s\n", yytext); }
-"("         { printf("%s\n", yytext); }
-")"         { printf("%s\n", yytext); }
-"["         { printf("%s\n", yytext); }
-"]"         { printf("%s\n", yytext); }
-"{"         { printf("%s\n", yytext); }
-"}"         { printf("%s\n", yytext); }
-"float"     { printf("float\n"); return TYPE; }
-"int"       { printf("int\n"); return TYPE; }
-"struct"    { printf("struct\n"); }
-"return"    { printf("return\n"); }
-"if"        { printf("if\n"); }
-"else"      { printf("else\n"); }
-"while"     { printf("while\n"); }
+"&&"        { printf("%s\n", yytext); return AND; }
+"||"        { printf("%s\n", yytext); return OR; }
+"."         { printf("%s\n", yytext); return DOT; }
+"!"         { printf("%s\n", yytext); return NOT; }
+"("         { printf("%s\n", yytext); return LP; }
+")"         { printf("%s\n", yytext); return RP; }
+"["         { printf("%s\n", yytext); return LB; }
+"]"         { printf("%s\n", yytext); return RB; }
+"{"         { printf("%s\n", yytext); return LC; }
+"}"         { printf("%s\n", yytext); return RC; }
+"float"     { printf("float \n"); return TYPE; }
+"int"       { printf("int \n"); return TYPE; }
+"struct"    { printf("struct \n"); return STRUCT; }
+"return"    { printf("return \n"); return RETURN; }
+"if"        { printf("if \n"); return IF; }
+"else"      { printf("else \n"); return ELSE; }
+"while"     { printf("while \n"); return WHILE; }
 {inum}      { int_func(); return INT; }
 {fnum}      { float_func(); return FLOAT; }
-{id}        { id_func(); }
+{id}        { id_func(); return ID; }
 {ws}        {}
 {str}       { str_func(); }
 {lcomment}  { printf("line comment %s\n", yytext); }
@@ -85,7 +85,7 @@ int int_func()
 int float_func()
 {
     yylval.type_float = atof(yytext);
-    printf("float %s\n", yytext);
+    printf("float %f\n", atof(yytext));
     return 1;
 }
 
