@@ -1,6 +1,7 @@
 %{
     #include <stdio.h>
     #include "lex.yy.c"
+    extern void yyerror(char *msg);
 %}
 
 %locations
@@ -28,13 +29,13 @@
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE
 
-%right ASSIGNOP
+%right ASSIGNOP 
 %left OR
 %left AND
 %left RELOP
 %left PLUS MINUS
 %left STAR DIV
-%left NOT
+%right NOT            
 %left DOT LP RP LB RB
 
 /* declared non-terminals */
