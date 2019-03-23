@@ -8,6 +8,13 @@
         yylloc.last_column = yycolumn + yyleng - 1; \
         yycolumn += yyleng;
 
+    /* defined in syntax.y */
+    #define LEXICAL_U true
+    #define GRAMM_U false
+
+    extern struct Node;
+    extern struct Node* create_node(bool type, char* id, int lineno, char* info);
+
     int int_func();
     int float_func();
     int id_func();
@@ -77,20 +84,21 @@ fnum        {inum}\.{digit}+
 
 int int_func()
 {
-    yylval.type_int = atoi(yytext);
+    yylval = create_node(LEXICAL_U, "INT", lineno, yytext);
     printf("integer %d\n", atoi(yytext));
     return 1;
 }
 
 int float_func()
 {
-    yylval.type_float = atof(yytext);
+    yylval = create_node(LEXICAL_U, "FLOAT", lineno, yytext);
     printf("float %f\n", atof(yytext));
     return 1;
 }
 
 int id_func()
 {
+    yylval = create_node(LEXICAL_U, "ID", lineno, yytext);
     printf("id %s\n", yytext);
     return 1;
 }
