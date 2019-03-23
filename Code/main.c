@@ -3,6 +3,8 @@
 extern FILE* yyin;
 extern int yylineno;
 extern int yylex();
+extern int yyrestart();
+extern int yyparse();
 
 // main function for flex
 int main(int argc, char** argv) {
