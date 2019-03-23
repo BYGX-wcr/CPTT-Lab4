@@ -2,7 +2,6 @@
 
 extern FILE* yyin;
 extern int yylineno;
-extern int yylex();
 extern int yyrestart();
 extern int yyparse();
 

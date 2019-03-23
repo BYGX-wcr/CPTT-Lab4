@@ -40,8 +40,3 @@ clean:
 	rm -f $(OBJS) $(OBJS:.o=.d)
 	rm -f $(LFC) $(YFC) $(YFC:.c=.h)
 	rm -f *~
-	rm -f token-scanner
-
-token-scanner: lexical
-	gcc main.c $(LFC) -lfl -o token-scanner
-	./token-scanner ../Test/test1.cmm
