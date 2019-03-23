@@ -1,6 +1,13 @@
 %{
     #include "syntax.tab.h"
 
+    int yycolumn = 1;
+    #define YY_USER_ACTION \
+        yylloc.first_line = yylloc.last_line = yylineno; \
+        yylloc.first_column = yycolumn; \
+        yylloc.last_column = yycolumn + yyleng - 1; \
+        yycolumn += yyleng;
+
     int int_func();
     int float_func();
     int id_func();
@@ -11,7 +18,7 @@
 %option  yylineno
 
 /* regular definitions */
-delim       [ \t\r\n]
+delim       [ \t\r]
 ws          {delim}+
 letter      [a-zA-Z]
 digit       [0-9]
@@ -22,71 +29,75 @@ bcomment    \/\*(.|\n)*\*\/
 comment     {lcomment}|{bcomment}
 
 /* Tokens definitions  */
-inum         (0|[1-9]{digit}*)    
-fnum       {INT}\.{digit}+
+inum        (0|[1-9]{digit}*)    
+fnum        {inum}\.{digit}+
 
 %%
-";"         {printf("%s\n",yytext);}
-","         {printf("%s\n",yytext);}
-"="         {printf("%s\n",yytext);}
-">"         {printf("%s\n",yytext);}
-"<"         {printf("%s\n",yytext);}
-">="        {printf("%s\n",yytext);}
-"<="        {printf("%s\n",yytext);}
-"=="        {printf("%s\n",yytext);}
-"!="        {printf("%s\n",yytext);}
-"+"         {printf("%s\n",yytext);}
-"-"         {printf("%s\n",yytext);}
-"/"         {printf("%s\n",yytext);}
-"&&"        {printf("%s\n",yytext);}
-"||"        {printf("%s\n",yytext);}
-"."         {printf("%s\n",yytext);}
-"!"         {printf("%s\n",yytext);}
-"("         {printf("%s\n",yytext);}
-")"         {printf("%s\n",yytext);}
-"["         {printf("%s\n",yytext);}
-"]"         {printf("%s\n",yytext);}
-"{"         {printf("%s\n",yytext);}
-"}"         {printf("%s\n",yytext);}
-"float"     {printf("float\n");}
-"int"       {printf("int\n");}
-"struct"    {printf("struct\n");}
-"return"    {printf("return\n");}
-"if"        {printf("if\n");}
-"else"      {printf("else\n");}
-"while"     {printf("while\n");}
-{inum}       {int_func();}
-{fnum}     {float_func();}
-{id}        {id_func();}
+"\n"        { yycolumn = 1; }
+";"         { printf("%s\n", yytext); }
+","         { printf("%s\n", yytext); }
+"="         { printf("%s\n", yytext); }
+">"         { printf("%s\n", yytext); }
+"<"         { printf("%s\n", yytext); }
+">="        { printf("%s\n", yytext); }
+"<="        { printf("%s\n", yytext); }
+"=="        { printf("%s\n", yytext); }
+"!="        { printf("%s\n", yytext); }
+"+"         { printf("%s\n", yytext); return PLUS; }
+"-"         { printf("%s\n", yytext); return MINUS; }
+"*"         { printf("%s\n", yytext); return STAR; }
+"/"         { printf("%s\n", yytext); return DIV; }
+"&&"        { printf("%s\n", yytext); }
+"||"        { printf("%s\n", yytext); }
+"."         { printf("%s\n", yytext); }
+"!"         { printf("%s\n", yytext); }
+"("         { printf("%s\n", yytext); }
+")"         { printf("%s\n", yytext); }
+"["         { printf("%s\n", yytext); }
+"]"         { printf("%s\n", yytext); }
+"{"         { printf("%s\n", yytext); }
+"}"         { printf("%s\n", yytext); }
+"float"     { printf("float\n"); return TYPE; }
+"int"       { printf("int\n"); return TYPE; }
+"struct"    { printf("struct\n"); }
+"return"    { printf("return\n"); }
+"if"        { printf("if\n"); }
+"else"      { printf("else\n"); }
+"while"     { printf("while\n"); }
+{inum}      { int_func(); return INT; }
+{fnum}      { float_func(); return FLOAT; }
+{id}        { id_func(); }
 {ws}        {}
-{str}       {str_func();}
-{lcomment}  {printf("line comment %s\n", yytext);}
-{bcomment}  {printf("block comment %s\n", yytext);}
-.           {error_func();}
+{str}       { str_func(); }
+{lcomment}  { printf("line comment %s\n", yytext); }
+{bcomment}  { printf("block comment %s\n", yytext); }
+.           { error_func(); }
 
 %%
 
 int int_func()
 {
-    printf("INT %d\n", atoi(yytext));
+    yylval.type_int = atoi(yytext);
+    printf("integer %d\n", atoi(yytext));
     return 1;
 }
 
 int float_func()
 {
-    printf("FLOAT %s\n", yytext);
+    yylval.type_float = atof(yytext);
+    printf("float %s\n", yytext);
     return 1;
 }
 
 int id_func()
 {
-    printf("ID %s\n", yytext);
+    printf("id %s\n", yytext);
     return 1;
 }
 
 int str_func()
 {
-    printf("STR %s \n", yytext);
+    printf("str %s \n", yytext);
     return 1;
 }
 
