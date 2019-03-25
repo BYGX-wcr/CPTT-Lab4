@@ -1,9 +1,12 @@
 #include <stdio.h>
 
+extern struct Node;
 extern FILE* yyin;
 extern int yylineno;
 extern int yyrestart();
 extern int yyparse();
+extern void output(struct Node* root);
+extern struct Node* syntax_tree;
 
 // main function for flex
 int main(int argc, char** argv) {
@@ -16,6 +19,8 @@ int main(int argc, char** argv) {
     /* start token analysis */
     yylineno = 1;
     yyrestart(yyin);
-    yyparse();
+    if(yyparse() == 0){
+        output(syntax_tree);
+    }
     return 0;
 }
