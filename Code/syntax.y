@@ -23,14 +23,12 @@
     void insert(struct Node* dest, struct Node* src);
     void combine(struct Node* dest,int number,...);
     void destroy_tree(struct Node* root);
+    void display(struct Node* root,int space);
     void output(struct Node* root);
 
 
     struct Node* syntax_tree = NULL;
 
-    // struct Node* syntax_stack = NULL;
-    // int length = 0;
-    // int size = 0;
 %}
 
 %locations
@@ -68,235 +66,235 @@
 
 /* High-level Definitions */
 Program : ExtDefList {
-    $$ = create_node(GRAM_U, "Program", @1.first_line, "");
+    $$ = create_node(GRAM_U, "Program", @$.first_line, "");
     insert($$, $1);
     syntax_tree = $$;
 }
     ;
 ExtDefList : ExtDef ExtDefList {
-    $$ = create_node(GRAM_U, "ExtDefList", @1.first_line, "");
+    $$ = create_node(GRAM_U, "ExtDefList", @$.first_line, "");
     combine($$,2,$1,$2);
 }
-    |
+    |  {$$ = create_node(GRAM_U, "ExtDefList", @$.first_line, "");}
     ; 
 ExtDef : Specifier ExtDecList SEMI {
-    $$ = create_node(GRAM_U,"ExtDef",@1.first_line,"");
+    $$ = create_node(GRAM_U,"ExtDef",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | Specifier SEMI {
-    $$ = create_node(GRAM_U,"ExtDef",@1.first_line,"");
+    $$ = create_node(GRAM_U,"ExtDef",@$.first_line,"");
     combine($$,2,$1,$2);
 }
     | Specifier FunDec CompSt {
-    $$ = create_node(GRAM_U,"ExtDef",@1.first_line,"");
+    $$ = create_node(GRAM_U,"ExtDef",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     ;
 ExtDecList : VarDec {
-    $$ = create_node(GRAM_U,"ExtDecList",@1.first_line,"");
+    $$ = create_node(GRAM_U,"ExtDecList",@$.first_line,"");
     insert($$,$1);
 }
     | VarDec COMMA ExtDecList {
-    $$ = create_node(GRAM_U,"ExtDecList",@1.first_line,"");
+    $$ = create_node(GRAM_U,"ExtDecList",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     ;
 
 /* Specifiers */
 Specifier : TYPE {
-    $$ = create_node(GRAM_U,"Specifier",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Specifier",@$.first_line,"");
     insert($$,$1);
 }
     | StructSpecifier {
-    $$ = create_node(GRAM_U,"Specifier",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Specifier",@$.first_line,"");
     insert($$,$1);
 }
     ;
 StructSpecifier : STRUCT OptTag LC DefList RC {
-    $$ = create_node(GRAM_U,"StructSpecifier",@1.first_line,"");
+    $$ = create_node(GRAM_U,"StructSpecifier",@$.first_line,"");
     combine($$,5,$1,$2,$3,$4,$5);
 }
     | STRUCT Tag {
-    $$ = create_node(GRAM_U,"StructSpecifier",@1.first_line,"");
+    $$ = create_node(GRAM_U,"StructSpecifier",@$.first_line,"");
     combine($$,2,$1,$2);
 }
     ;
 OptTag : ID {
-    $$ = create_node(GRAM_U,"OptTag",@1.first_line,"");
+    $$ = create_node(GRAM_U,"OptTag",@$.first_line,"");
     insert($$,$1);
 }
-    |
+    |  {$$ = create_node(GRAM_U,"OptTag",@$.first_line,"");}
     ; 
 Tag : ID {
-    $$ = create_node(GRAM_U,"Tag",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Tag",@$.first_line,"");
     insert($$,$1);
 }
     ;
 
 /* Declarators */
 VarDec : ID {
-    $$ = create_node(GRAM_U,"VarDec",@1.first_line,"");
+    $$ = create_node(GRAM_U,"VarDec",@$.first_line,"");
     insert($$,$1);
 }
     | VarDec LB INT RB {
-    $$ = create_node(GRAM_U,"VarDec",@1.first_line,"");
+    $$ = create_node(GRAM_U,"VarDec",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     ;
 FunDec : ID LP VarList RP {
-    $$ = create_node(GRAM_U,"FunDec",@1.first_line,"");
+    $$ = create_node(GRAM_U,"FunDec",@$.first_line,"");
     combine($$,4,$1,$2,$3,$4);
 }
     | ID LP RP {
-    $$ = create_node(GRAM_U,"FunDec",@1.first_line,"");
+    $$ = create_node(GRAM_U,"FunDec",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     ;
 VarList : ParamDec COMMA VarList {
-    $$ = create_node(GRAM_U,"VarList",@1.first_line,"");
+    $$ = create_node(GRAM_U,"VarList",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | ParamDec {
-    $$ = create_node(GRAM_U,"VarList",@1.first_line,"");
+    $$ = create_node(GRAM_U,"VarList",@$.first_line,"");
     insert($$,$1);
 }
     ;
 ParamDec : Specifier VarDec {
-    $$ = create_node(GRAM_U,"ParamDec",@1.first_line,"");
+    $$ = create_node(GRAM_U,"ParamDec",@$.first_line,"");
     combine($$,2,$1,$2);
 }
     ;
 
 /* Statements */
 CompSt : LC DefList StmtList RC {
-    $$ = create_node(GRAM_U,"CompSt",@1.first_line,"");
+    $$ = create_node(GRAM_U,"CompSt",@$.first_line,"");
     combine($$,4,$1,$2,$3,$4);
 }
     ;
 StmtList : Stmt StmtList {
-    $$ = create_node(GRAM_U,"StmtList",@1.first_line,"");
+    $$ = create_node(GRAM_U,"StmtList",@$.first_line,"");
     combine($$,2,$1,$2);
 }
-    |
+    |  { $$ = create_node(GRAM_U,"StmtList",@$.first_line,""); }
     ;
 Stmt : Exp SEMI {
-    $$ = create_node(GRAM_U,"Stmt",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Stmt",@$.first_line,"");
     combine($$,2,$1,$2);
 }
     | CompSt {
-    $$ = create_node(GRAM_U,"Stmt",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Stmt",@$.first_line,"");
     insert($$,$1);
 }
     | RETURN Exp SEMI {
-    $$ = create_node(GRAM_U,"Stmt",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Stmt",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | IF LP Exp RP Stmt %prec LOWER_THAN_ELSE {
-    $$ = create_node(GRAM_U,"Stmt",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Stmt",@$.first_line,"");
     combine($$,5,$1,$2,$3,$4,$5);
 }
     | IF LP Exp RP Stmt ELSE Stmt {
-    $$ = create_node(GRAM_U,"Stmt",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Stmt",@$.first_line,"");
     combine($$,7,$1,$2,$3,$4,$5,$6,$7);
 }
     | WHILE LP Exp RP Stmt {
-    $$ = create_node(GRAM_U,"Stmt",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Stmt",@$.first_line,"");
     combine($$,5,$1,$2,$3,$4,$5);
 }
     ;
 
 /* Local Definitions */
 DefList : Def DefList {
-    $$ = create_node(GRAM_U,"DefList",@1.first_line,"");
+    $$ = create_node(GRAM_U,"DefList",@$.first_line,"");
     combine($$,2,$1,$2);
 }
-    |
+    | { $$ = create_node(GRAM_U,"DefList",@$.first_line,""); }
     ;
 Def : Specifier DecList SEMI {
-    $$ = create_node(GRAM_U,"Def",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Def",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     ;
 DecList : Dec {
-    $$ = create_node(GRAM_U,"DecList",@1.first_line,"");
+    $$ = create_node(GRAM_U,"DecList",@$.first_line,"");
     insert($$,$1);
 }
     | Dec COMMA DecList {
-    $$ = create_node(GRAM_U,"DecList",@1.first_line,"");
+    $$ = create_node(GRAM_U,"DecList",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     ;
 Dec : VarDec {
-    $$ = create_node(GRAM_U,"Dec",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Dec",@$.first_line,"");
     insert($$,$1);
 }
     | VarDec ASSIGNOP Exp {
-    $$ = create_node(GRAM_U,"Dec",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Dec",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     ;
 
 /* Expressions */
 Exp : Exp ASSIGNOP Exp {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | Exp AND Exp {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | Exp OR Exp {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | Exp RELOP Exp {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | Exp PLUS Exp {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");    
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");    
     combine($$,3,$1,$2,$3);
 }
     | Exp MINUS Exp {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | Exp STAR Exp {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | Exp DIV Exp {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | LP Exp RP {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | MINUS Exp {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,2,$1,$2);
 }
     | NOT Exp {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     {
         combine($$,2,$1,$2);
     }
 }
     | ID LP Args RP {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,4,$1,$2,$3,$4);
 }
     | ID LP RP {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | Exp LB Exp RB {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,""); 
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,""); 
     combine($$,4,$1,$2,$3,$4);
 }
     | Exp DOT ID {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | ID {
@@ -304,20 +302,20 @@ Exp : Exp ASSIGNOP Exp {
         insert($$, $1);
 }
     | INT {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     insert($$,$1);
 }
     | FLOAT {
-    $$ = create_node(GRAM_U,"Exp",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     insert($$,$1);
 }
     ;
 Args : Exp COMMA Args {
-    $$ = create_node(GRAM_U,"Args",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Args",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
     | Exp {
-    $$ = create_node(GRAM_U,"Args",@1.first_line,"");
+    $$ = create_node(GRAM_U,"Args",@$.first_line,"");
     insert($$,$1);    
 }
     ;
@@ -389,8 +387,11 @@ void combine(struct Node *dest,int number,...){
     va_end(ap);
 }
 
-void output(struct Node* root) {
-    if(root->type == LEXICAL_U) {
+void display(struct Node* root,int space) {
+    if(root->type == LEXICAL_U) {                // lexical
+        for(int k = 0;k < space;k++) {          // printf space
+            printf(" ");
+        }
         if(strcmp(root->id,"ID") == 0) {          // ID
             printf("%s: %s\n",root->id,root->info);
         }      
@@ -406,70 +407,27 @@ void output(struct Node* root) {
         else {
             printf("%s\n",root->id);
         }
-
     }
-    else {
-        for(int i = 0;(i < MAX_CHILDS) && (root->childs[i] != NULL);i++) {
-            output(root->childs[i]);
-            struct Node *p = root->childs[i];
-            printf("%s \n",p->id);
+    else {                                // programmer 
+        if(root->childs[0] != NULL) {     // not empty 
+            for(int k = 0;k < space;k++) {  // printf space
+                printf(" ");
+            }
+            printf("%s (%d)\n",root->id,root->lineno); 
+            space += 2;                  // space add 2
+            for(int i = 0;(i < MAX_CHILDS) && (root->childs[i] != NULL);i++) {
+                display(root->childs[i],space);
+            }
         }
     }
 }
 
-/*
-void Sum(int Num, ...) {
-	char *T = NULL;
-	va_list ap;
-	va_start(ap, Num);
-	for (int i = 0; i < Num; i++)
-	{
-		T = va_arg(ap, char *);
-		printf("%s \n", T);
-	}
-	va_end(ap);
+void output(struct Node* root) {
+    if(syntax_tree == NULL){
+        panic("this tree is empty !\n");
+        return;
+    }
+    int space = 0;
+    display(syntax_tree,space);
+    destroy_tree(syntax_tree);
 }
-*/
-
-
-/* operations on syntax stack */
-
-// void expand() {
-//     //allocate new space
-//     if (size == 0)
-//         size = 8;
-//     else
-//         size <<= 1;
-//     struct Node* new_space = malloc(size * sizeof(void *));
-//     memset(new_space, 0, size * sizeof(void *));
-
-//     //copy data & release space
-//     memcpy(new_space, syntax_stack, length * sizeof(void *));
-//     free(syntax_stack);
-// }
-
-// void push(struct Node* ptr) {
-//     if (syntax_stack == NULL) {
-//         panic("syntax stack uninitiated!\n");
-//     }
-//     else if (length == size) {
-//         expand(); // enlarge the size of stack
-//     }
-
-//     syntax_stack[length] = ptr;
-//     length++;
-// }
-
-// struct Node* pop() {
-//     if (syntax_stack == NULL) {
-//         panic("syntax stack uninitiated!\n");
-//     }
-//     else if (length == 0) {
-//         panic("syntax stack underflow!\n");
-//     }
-
-//     length--;
-//     struct Node* res = syntax_stack[length];
-
-//     return res;
-// }

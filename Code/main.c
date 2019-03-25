@@ -20,9 +20,7 @@ int main(int argc, char** argv) {
     yylineno = 1;
     yyrestart(yyin);
     if(yyparse() == 0){
-        if(syntax_tree != NULL){
-            output(syntax_tree);
-        }
+        output(syntax_tree);
     }
     return 0;
 }

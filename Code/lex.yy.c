@@ -2084,27 +2084,24 @@ void yyfree (void * ptr )
 int int_func()
 {
     yylval = create_node(LEXICAL_U, "INT", yylineno, yytext);
-    //printf("integer %d\n", atoi(yytext));
     return 1;
 }
 
 int float_func()
 {
     yylval = create_node(LEXICAL_U, "FLOAT", yylineno, yytext);
-    //printf("float %f\n", atof(yytext));
     return 1;
 }
 
 int id_func()
 {
     yylval = create_node(LEXICAL_U, "ID", yylineno, yytext);
-    //printf("id %s\n", yytext);
     return 1;
 }
 
 int str_func()
 {
-    //printf("str %s \n", yytext);
+    printf("this str %s \n", yytext);
     return 1;
 }
 
