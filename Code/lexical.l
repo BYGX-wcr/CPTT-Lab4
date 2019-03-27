@@ -1,7 +1,6 @@
 %{
     #include <stdio.h>
     #include <stdbool.h>
-    //#define YYSTYPE struct Node *
     #include "syntax.tab.h"
 
     int yycolumn = 1;
@@ -15,14 +14,14 @@
     #define LEXICAL_U 1
     #define GRAM_U 0
 
-    //extern struct Node;
-
     int int_func();
     int float_func();
     int id_func();
     int str_func();
     int error_func();
-    extern  struct Node* create_node(bool type, char* id, int lineno, const char* info);
+
+    extern int error_flag;
+    extern struct Node* create_node(bool type, char* id, int lineno, const char* info);
 %}
 
 %option  yylineno
@@ -37,8 +36,6 @@ str         \"(.)*\"
 lcomment    \/\/.*$
 bcomment    \/\*(.|\n)*\*\/
 comment     {lcomment}|{bcomment}
-
-/* Tokens definitions  */
 inum        (0|[1-9]{digit}*)    
 fnum        {inum}\.{digit}+
 
@@ -67,8 +64,8 @@ fnum        {inum}\.{digit}+
 "]"         { yylval = create_node(LEXICAL_U,"RB",yylineno,yytext); return RB; }
 "{"         { yylval = create_node(LEXICAL_U,"LC",yylineno,yytext); return LC; }
 "}"         { yylval = create_node(LEXICAL_U,"RC",yylineno,yytext); return RC; }
-"float"     { yylval = create_node(LEXICAL_U,"TYPE",yylineno,"float"); return TYPE; }
-"int"       { yylval = create_node(LEXICAL_U,"TYPE",yylineno,"int"); return TYPE; }
+"float"     { yylval = create_node(LEXICAL_U,"TYPE",yylineno,yytext); return TYPE; }
+"int"       { yylval = create_node(LEXICAL_U,"TYPE",yylineno,yytext); return TYPE; }
 "struct"    { yylval = create_node(LEXICAL_U,"STRUCT",yylineno,yytext); return STRUCT; }
 "return"    { yylval = create_node(LEXICAL_U,"RETURN",yylineno,yytext); return RETURN; }
 "if"        { yylval = create_node(LEXICAL_U,"IF",yylineno,yytext); return IF; }
@@ -79,8 +76,8 @@ fnum        {inum}\.{digit}+
 {id}        { id_func(); return ID; }
 {ws}        {}
 {str}       { str_func(); }
-{lcomment}  { printf("line comment %s\n", yytext); }
-{bcomment}  { printf("block comment %s\n", yytext); }
+{lcomment}  {}
+{bcomment}  {}
 .           { error_func(); }
 
 %%
@@ -112,5 +109,6 @@ int str_func()
 int error_func()
 {
     printf("Error type A at Line %d: Mysterious character \"%s\"\n", yylineno, yytext);
+    error_flag = 1;
     return 1;
 }
