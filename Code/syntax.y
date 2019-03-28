@@ -6,6 +6,8 @@
     #include <stdarg.h>
     #include "lex.yy.c"
 
+    #define YYERROR_VERBOSE
+
     #define MAX_CHILDS 8
     #define NODE_SIZE sizeof(struct Node)
 
@@ -17,7 +19,7 @@
         struct Node* childs[MAX_CHILDS]; //pointers to child nodes
     };
 
-    void yyerror(char* msg);
+    void yyerror(const char* msg);
     void panic(char* msg);
     struct Node* create_node(bool type, char* id, int lineno, const char* info);
     void insert(struct Node* dest, struct Node* src);
@@ -25,9 +27,10 @@
     void destroy_tree(struct Node* root);
     void display(struct Node* root,int space);
     void output(struct Node* root);
-
+    void errinfo(int lineno, char* detail);
 
     struct Node* syntax_tree = NULL;
+    int error_flag = 0;
 
 %}
 
@@ -47,7 +50,7 @@
 %token LP RP LB RB LC RC
 %token STRUCT RETURN IF ELSE WHILE
 
-/* Priority declaration */
+/* priority declaration */
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE
 
@@ -59,8 +62,6 @@
 %left STAR DIV
 %right NOT            
 %left DOT LP RP LB RB
-
-/* declared non-terminals */
 
 %%
 
@@ -140,6 +141,9 @@ VarDec : ID {
     $$ = create_node(GRAM_U,"VarDec",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
+    | error RB {
+    errinfo(@1.first_line, "Invalid array declaration");
+}
     ;
 FunDec : ID LP VarList RP {
     $$ = create_node(GRAM_U,"FunDec",@$.first_line,"");
@@ -200,6 +204,18 @@ Stmt : Exp SEMI {
     | WHILE LP Exp RP Stmt {
     $$ = create_node(GRAM_U,"Stmt",@$.first_line,"");
     combine($$,5,$1,$2,$3,$4,$5);
+}
+    | error IF {
+    errinfo(@1.first_line, "Missing \";\" before \"if\"");
+}
+    | error ELSE {
+    errinfo(@1.first_line, "Missing \";\" before \"else\"");
+}
+    | error WHILE {
+    errinfo(@1.first_line, "Missing \";\" before \"while\"");
+}
+    | error SEMI {
+    errinfo(@1.first_line, "Invalid statement");
 }
     ;
 
@@ -277,9 +293,7 @@ Exp : Exp ASSIGNOP Exp {
 }
     | NOT Exp {
     $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
-    {
-        combine($$,2,$1,$2);
-    }
+    combine($$,2,$1,$2);
 }
     | ID LP Args RP {
     $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
@@ -298,8 +312,8 @@ Exp : Exp ASSIGNOP Exp {
     combine($$,3,$1,$2,$3);
 }
     | ID {
-        $$ = create_node(GRAM_U, "Exp", @$.first_line, "");
-        insert($$, $1);
+    $$ = create_node(GRAM_U, "Exp", @$.first_line, "");
+    insert($$, $1);
 }
     | INT {
     $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
@@ -308,6 +322,69 @@ Exp : Exp ASSIGNOP Exp {
     | FLOAT {
     $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     insert($$,$1);
+}
+    | Exp PLUS error {
+    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+}
+    | error PLUS Exp {
+    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+}
+    | Exp MINUS error {
+    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+}
+    | error MINUS Exp {
+    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+}
+    | Exp STAR error {
+    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+}
+    | error STAR Exp {
+    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+}
+    | Exp DIV error {
+    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+}
+    | error DIV Exp {
+    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+}
+    | Exp RELOP error {
+    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+}
+    | error RELOP Exp {
+    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+}
+    | Exp ASSIGNOP error {
+    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+}
+    | error ASSIGNOP Exp {
+    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+}
+    | Exp AND error {
+    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+}
+    | error AND Exp {
+    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+}
+    | Exp OR error {
+    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+}
+    | error OR Exp {
+    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+}
+    | MINUS error {
+    errinfo(@2.first_line, "Invalid expression, may be missing an right operand");
+}
+    | NOT error {
+    errinfo(@2.first_line, "Invalid expression, may be missing an right operand");
+}
+    | LP Exp error RP {
+    errinfo(@2.first_line, "Invalid expression between ( )");
+}
+    | LP error RP {
+    errinfo(@2.first_line, "Invalid expression between ( )");
+}
+    | Exp LB error RB {
+    errinfo(@2.first_line, "Invalid array reference");
 }
     ;
 Args : Exp COMMA Args {
@@ -322,13 +399,18 @@ Args : Exp COMMA Args {
 
 %%
 
-void yyerror(char* msg) {
-    fprintf(stderr, "Error type B  %s\n",msg);
+void yyerror(const char* msg) {
+    fprintf(stderr, "%s\n",msg);
+    error_flag = 1;
 }
 
 void panic(char* msg) {
-    fprintf(stderr,"%s \n", msg);
+    fprintf(stderr, "%s\n", msg);
     assert(0);
+}
+
+void errinfo(int lineno, char* detail) {
+    fprintf(stderr, "Error type B at Line %d: %s.***********************\n", lineno, detail);
 }
 
 /* operations on tree nodes*/
@@ -423,11 +505,11 @@ void display(struct Node* root,int space) {
 }
 
 void output(struct Node* root) {
-    if(syntax_tree == NULL){
+    if(root == NULL){
         panic("this tree is empty !\n");
         return;
     }
     int space = 0;
-    display(syntax_tree,space);
-    destroy_tree(syntax_tree);
+    display(root, space);
+    destroy_tree(root);
 }
