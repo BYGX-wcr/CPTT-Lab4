@@ -76,7 +76,7 @@ ExtDefList : ExtDef ExtDefList {
     $$ = create_node(GRAM_U, "ExtDefList", @$.first_line, "");
     combine($$,2,$1,$2);
 }
-    |  {$$ = create_node(GRAM_U, "ExtDefList", @$.first_line, "");}
+    | {$$ = create_node(GRAM_U, "ExtDefList", @$.first_line, "");}
     ; 
 ExtDef : Specifier ExtDecList SEMI {
     $$ = create_node(GRAM_U,"ExtDef",@$.first_line,"");
@@ -124,8 +124,8 @@ OptTag : ID {
     $$ = create_node(GRAM_U,"OptTag",@$.first_line,"");
     insert($$,$1);
 }
-    |  {$$ = create_node(GRAM_U,"OptTag",@$.first_line,"");}
-    ; 
+    | {$$ = create_node(GRAM_U,"OptTag",@$.first_line,"");}
+    ;
 Tag : ID {
     $$ = create_node(GRAM_U,"Tag",@$.first_line,"");
     insert($$,$1);
@@ -140,9 +140,6 @@ VarDec : ID {
     | VarDec LB INT RB {
     $$ = create_node(GRAM_U,"VarDec",@$.first_line,"");
     combine($$,3,$1,$2,$3);
-}
-    | error RB {
-    errinfo(@1.first_line, "Invalid array declaration");
 }
     ;
 FunDec : ID LP VarList RP {
@@ -174,12 +171,18 @@ CompSt : LC DefList StmtList RC {
     $$ = create_node(GRAM_U,"CompSt",@$.first_line,"");
     combine($$,4,$1,$2,$3,$4);
 }
+    | LC DefList StmtList error {
+    //errinfo(@4.first_line, "Missing \"}\"");
+}
     ;
 StmtList : Stmt StmtList {
     $$ = create_node(GRAM_U,"StmtList",@$.first_line,"");
     combine($$,2,$1,$2);
 }
     |  { $$ = create_node(GRAM_U,"StmtList",@$.first_line,""); }
+    | Stmt error {
+    errinfo(@2.first_line, "Missing \"}\"");
+}
     ;
 Stmt : Exp SEMI {
     $$ = create_node(GRAM_U,"Stmt",@$.first_line,"");
@@ -205,14 +208,29 @@ Stmt : Exp SEMI {
     $$ = create_node(GRAM_U,"Stmt",@$.first_line,"");
     combine($$,5,$1,$2,$3,$4,$5);
 }
-    | error IF {
-    errinfo(@1.first_line, "Missing \";\" before \"if\"");
+    | IF LP Exp error Stmt %prec LOWER_THAN_ELSE {
+    errinfo(@3.first_line, "Missing \")\"");
 }
-    | error ELSE {
-    errinfo(@1.first_line, "Missing \";\" before \"else\"");
+    | IF LP Exp error Stmt ELSE Stmt {
+    errinfo(@3.first_line, "Missing \")\"");
 }
-    | error WHILE {
-    errinfo(@1.first_line, "Missing \";\" before \"while\"");
+    | IF error Exp RP Stmt %prec LOWER_THAN_ELSE {
+    errinfo(@2.first_line, "Missing \"(\"");
+}
+    | IF error Exp RP Stmt ELSE Stmt {
+    errinfo(@2.first_line, "Missing \"(\"");
+}
+    | IF LP Exp error Exp RP Stmt %prec LOWER_THAN_ELSE {
+    errinfo(@2.first_line, "Missing an operator");
+}
+    | IF LP Exp error Exp RP Stmt ELSE Stmt {
+    errinfo(@2.first_line, "Missing an operator");
+}
+    | Exp error {
+    errinfo(@1.first_line, "Missing \";\"");
+}
+    | RETURN Exp error {
+    errinfo(@1.first_line, "Missing \";\"");
 }
     | error SEMI {
     errinfo(@1.first_line, "Invalid statement");
@@ -229,6 +247,9 @@ DefList : Def DefList {
 Def : Specifier DecList SEMI {
     $$ = create_node(GRAM_U,"Def",@$.first_line,"");
     combine($$,3,$1,$2,$3);
+}
+    | Specifier DecList error {
+    errinfo(@1.first_line, "Missing an \";\"");
 }
     ;
 DecList : Dec {
@@ -251,7 +272,19 @@ Dec : VarDec {
     ;
 
 /* Expressions */
-Exp : Exp ASSIGNOP Exp {
+Exp : ID {
+    $$ = create_node(GRAM_U, "Exp", @$.first_line, "");
+    insert($$, $1);
+}
+    | INT {
+    $$ = create_node(GRAM_U, "Exp", @$.first_line,"");
+    insert($$,$1);
+}
+    | FLOAT {
+    $$ = create_node(GRAM_U, "Exp", @$.first_line,"");
+    insert($$,$1);
+}
+    | Exp ASSIGNOP Exp {
     $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
@@ -311,80 +344,65 @@ Exp : Exp ASSIGNOP Exp {
     $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
-    | ID {
-    $$ = create_node(GRAM_U, "Exp", @$.first_line, "");
-    insert($$, $1);
-}
-    | INT {
-    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
-    insert($$,$1);
-}
-    | FLOAT {
-    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
-    insert($$,$1);
-}
     | Exp PLUS error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error PLUS Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp MINUS error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error MINUS Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp STAR error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error STAR Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp DIV error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error DIV Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp RELOP error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error RELOP Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp ASSIGNOP error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error ASSIGNOP Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp AND error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error AND Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp OR error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error OR Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | MINUS error {
-    errinfo(@2.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | NOT error {
-    errinfo(@2.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | LP Exp error RP {
     errinfo(@2.first_line, "Invalid expression between ( )");
 }
     | LP error RP {
     errinfo(@2.first_line, "Invalid expression between ( )");
-}
-    | Exp LB error RB {
-    errinfo(@2.first_line, "Invalid array reference");
 }
     ;
 Args : Exp COMMA Args {
@@ -400,7 +418,7 @@ Args : Exp COMMA Args {
 %%
 
 void yyerror(const char* msg) {
-    fprintf(stderr, "%s\n",msg);
+    fprintf(stderr, "%s--------------------\n",msg);
     error_flag = 1;
 }
 
