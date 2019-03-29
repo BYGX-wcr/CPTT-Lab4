@@ -5,7 +5,7 @@ extern FILE* yyin;
 extern int yylineno;
 extern struct Node* syntax_tree;
 extern int error_flag;
-extern int yydebug;
+//extern int yydebug;
 
 extern int yyrestart();
 extern int yyparse();
@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
     /* start token analysis */
     yylineno = 1;
     yyrestart(yyin);
-    yydebug = 0;
+    //yydebug = 0;
     if(yyparse() == 0 && !error_flag){
         output(syntax_tree);
     }
