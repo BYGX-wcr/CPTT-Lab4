@@ -91,10 +91,10 @@ ExtDef : Specifier ExtDecList SEMI {
     combine($$,3,$1,$2,$3);
 }
     | Specifier ExtDecList error {
-    errinfo(@2.first_line, "Missing \";\"");
+    errinfo(@2.last_line, "Missing \";\"");
 }
     | Specifier error {
-    errinfo(@1.first_line, "Missing \";\"");
+    errinfo(@1.last_line, "Missing \";\"");
 }
     | error SEMI {
     errinfo(@1.first_line, "Invalid explicit definition");
@@ -280,6 +280,12 @@ Stmt : Exp SEMI {
     | error SEMI {
     errinfo(@1.first_line, "Invalid statement");
 }
+    | RETURN error SEMI {
+    errinfo(@1.last_line, "Invalid statement");
+}
+    | RETURN error {
+    errinfo(@1.last_line, "Invalid statement");
+}
     ;
 
 /* Local Definitions */
@@ -392,6 +398,9 @@ Exp : ID {
     $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
+    | Exp LB error RB {
+    errinfo(@2.first_line, "Invalid array references");
+}
     | Exp PLUS error {
     errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
@@ -481,7 +490,7 @@ Args : Exp COMMA Args {
 %%
 
 void yyerror(const char* msg) {
-    //fprintf(stderr, "%s--------------------\n",msg);
+    fprintf(stderr, "%s--------------------\n",msg);
     error_flag = 1;
 }
 
@@ -491,7 +500,7 @@ void panic(char* msg) {
 }
 
 void errinfo(int lineno, char* detail) {
-    fprintf(stderr, "Error type B at Line %d: %s.\n", lineno, detail);
+    fprintf(stderr, "Error type B at Line %d: %s.****************************\n", lineno, detail);
 }
 
 /* operations on tree nodes*/
