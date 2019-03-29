@@ -90,6 +90,15 @@ ExtDef : Specifier ExtDecList SEMI {
     $$ = create_node(GRAM_U,"ExtDef",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
+    | Specifier ExtDecList error {
+    errinfo(@2.first_line, "Missing \";\"");
+}
+    | Specifier error {
+    errinfo(@1.first_line, "Missing \";\"");
+}
+    | error SEMI {
+    errinfo(@1.first_line, "Invalid explicit definition");
+}
     ;
 ExtDecList : VarDec {
     $$ = create_node(GRAM_U,"ExtDecList",@$.first_line,"");
@@ -118,6 +127,12 @@ StructSpecifier : STRUCT OptTag LC DefList RC {
     | STRUCT Tag {
     $$ = create_node(GRAM_U,"StructSpecifier",@$.first_line,"");
     combine($$,2,$1,$2);
+}
+    | STRUCT OptTag LC DefList error {
+    errinfo(@5.first_line, "Unexpected token, may be missing \"}\"");
+}
+    | STRUCT OptTag error DefList RC {
+    errinfo(@3.first_line, "Unexpected token, may be missing \"{\"");
 }
     ;
 OptTag : ID {
@@ -150,6 +165,18 @@ FunDec : ID LP VarList RP {
     $$ = create_node(GRAM_U,"FunDec",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
+    | ID error VarList RP {
+    errinfo(@1.first_line, "Missing a \"(\"");
+}
+    | ID LP VarList error {
+    errinfo(@1.first_line, "Missing a \")\"");
+}
+    | ID error RP {
+    errinfo(@1.first_line, "Missing a \"(\" or \";\"");
+}
+    | ID LP error {
+    errinfo(@1.first_line, "Missing a \")\"");
+}
     ;
 VarList : ParamDec COMMA VarList {
     $$ = create_node(GRAM_U,"VarList",@$.first_line,"");
@@ -158,6 +185,12 @@ VarList : ParamDec COMMA VarList {
     | ParamDec {
     $$ = create_node(GRAM_U,"VarList",@$.first_line,"");
     insert($$,$1);
+}
+    | ParamDec error VarList {
+    errinfo(@1.first_line, "Missing \",\"");
+}
+    | ParamDec error {
+    //errinfo(@1.first_line, "Missing \",\"");
 }
     ;
 ParamDec : Specifier VarDec {
@@ -174,6 +207,9 @@ CompSt : LC DefList StmtList RC {
     | LC DefList StmtList error {
     //errinfo(@4.first_line, "Missing \"}\"");
 }
+    | error DefList StmtList RC {
+    errinfo(@1.first_line, "May be missing \"{\"");
+}
     ;
 StmtList : Stmt StmtList {
     $$ = create_node(GRAM_U,"StmtList",@$.first_line,"");
@@ -181,7 +217,7 @@ StmtList : Stmt StmtList {
 }
     |  { $$ = create_node(GRAM_U,"StmtList",@$.first_line,""); }
     | Stmt error {
-    errinfo(@2.first_line, "Missing \"}\"");
+    errinfo(@2.first_line, "Unexpected token, may be missing \"}\"");
 }
     ;
 Stmt : Exp SEMI {
@@ -249,7 +285,10 @@ Def : Specifier DecList SEMI {
     combine($$,3,$1,$2,$3);
 }
     | Specifier DecList error {
-    errinfo(@1.first_line, "Missing an \";\"");
+    errinfo(@1.first_line, "Missing a \";\"");
+}
+    | error SEMI {
+    errinfo(@1.first_line, "Invalid definition");
 }
     ;
 DecList : Dec {
@@ -404,6 +443,18 @@ Exp : ID {
     | LP error RP {
     errinfo(@2.first_line, "Invalid expression between ( )");
 }
+    | ID error Args RP {
+    errinfo(@1.first_line, "Unexpected token, may be missing a \"(\"");
+}
+    | ID error RP {
+    errinfo(@1.first_line, "Unexpected token, may be missing a \"(\"");
+}
+    | ID LP Args error {
+    errinfo(@1.first_line, "Unexpected token, may be missing a \")\"");
+}
+    | ID LP error {
+    errinfo(@1.first_line, "Unexpected token, may be missing a \")\"");
+}
     ;
 Args : Exp COMMA Args {
     $$ = create_node(GRAM_U,"Args",@$.first_line,"");
@@ -411,7 +462,10 @@ Args : Exp COMMA Args {
 }
     | Exp {
     $$ = create_node(GRAM_U,"Args",@$.first_line,"");
-    insert($$,$1);    
+    insert($$,$1);
+}
+    | Exp error Args {
+    errinfo(@1.first_line, "Unexpected token, may be missing a \",\"");
 }
     ;
 
