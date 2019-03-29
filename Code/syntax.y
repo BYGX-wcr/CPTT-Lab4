@@ -76,7 +76,7 @@ ExtDefList : ExtDef ExtDefList {
     $$ = create_node(GRAM_U, "ExtDefList", @$.first_line, "");
     combine($$,2,$1,$2);
 }
-    |  {$$ = create_node(GRAM_U, "ExtDefList", @$.first_line, "");}
+    | {$$ = create_node(GRAM_U, "ExtDefList", @$.first_line, "");}
     ; 
 ExtDef : Specifier ExtDecList SEMI {
     $$ = create_node(GRAM_U,"ExtDef",@$.first_line,"");
@@ -89,6 +89,15 @@ ExtDef : Specifier ExtDecList SEMI {
     | Specifier FunDec CompSt {
     $$ = create_node(GRAM_U,"ExtDef",@$.first_line,"");
     combine($$,3,$1,$2,$3);
+}
+    | Specifier ExtDecList error {
+    errinfo(@2.first_line, "Missing \";\"");
+}
+    | Specifier error {
+    errinfo(@1.first_line, "Missing \";\"");
+}
+    | error SEMI {
+    errinfo(@1.first_line, "Invalid explicit definition");
 }
     ;
 ExtDecList : VarDec {
@@ -119,13 +128,19 @@ StructSpecifier : STRUCT OptTag LC DefList RC {
     $$ = create_node(GRAM_U,"StructSpecifier",@$.first_line,"");
     combine($$,2,$1,$2);
 }
+    | STRUCT OptTag LC DefList error {
+    errinfo(@5.first_line, "Unexpected token, may be missing \"}\"");
+}
+    | STRUCT OptTag error DefList RC {
+    errinfo(@3.first_line, "Unexpected token, may be missing \"{\"");
+}
     ;
 OptTag : ID {
     $$ = create_node(GRAM_U,"OptTag",@$.first_line,"");
     insert($$,$1);
 }
-    |  {$$ = create_node(GRAM_U,"OptTag",@$.first_line,"");}
-    ; 
+    | {$$ = create_node(GRAM_U,"OptTag",@$.first_line,"");}
+    ;
 Tag : ID {
     $$ = create_node(GRAM_U,"Tag",@$.first_line,"");
     insert($$,$1);
@@ -141,9 +156,6 @@ VarDec : ID {
     $$ = create_node(GRAM_U,"VarDec",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
-    | error RB {
-    errinfo(@1.first_line, "Invalid array declaration");
-}
     ;
 FunDec : ID LP VarList RP {
     $$ = create_node(GRAM_U,"FunDec",@$.first_line,"");
@@ -153,6 +165,18 @@ FunDec : ID LP VarList RP {
     $$ = create_node(GRAM_U,"FunDec",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
+    | ID error VarList RP {
+    errinfo(@1.first_line, "Missing a \"(\"");
+}
+    | ID LP VarList error {
+    errinfo(@1.first_line, "Missing a \")\"");
+}
+    | ID error RP {
+    errinfo(@1.first_line, "Missing a \"(\" or \";\"");
+}
+    | ID LP error {
+    errinfo(@1.first_line, "Missing a \")\"");
+}
     ;
 VarList : ParamDec COMMA VarList {
     $$ = create_node(GRAM_U,"VarList",@$.first_line,"");
@@ -161,6 +185,12 @@ VarList : ParamDec COMMA VarList {
     | ParamDec {
     $$ = create_node(GRAM_U,"VarList",@$.first_line,"");
     insert($$,$1);
+}
+    | ParamDec error VarList {
+    errinfo(@1.first_line, "Missing \",\"");
+}
+    | ParamDec error {
+    //errinfo(@1.first_line, "Missing \",\"");
 }
     ;
 ParamDec : Specifier VarDec {
@@ -174,12 +204,21 @@ CompSt : LC DefList StmtList RC {
     $$ = create_node(GRAM_U,"CompSt",@$.first_line,"");
     combine($$,4,$1,$2,$3,$4);
 }
+    | LC DefList StmtList error {
+    //errinfo(@4.first_line, "Missing \"}\"");
+}
+    | error DefList StmtList RC {
+    errinfo(@1.first_line, "May be missing \"{\"");
+}
     ;
 StmtList : Stmt StmtList {
     $$ = create_node(GRAM_U,"StmtList",@$.first_line,"");
     combine($$,2,$1,$2);
 }
     |  { $$ = create_node(GRAM_U,"StmtList",@$.first_line,""); }
+    | Stmt error {
+    errinfo(@2.first_line, "Unexpected token, may be missing \"}\"");
+}
     ;
 Stmt : Exp SEMI {
     $$ = create_node(GRAM_U,"Stmt",@$.first_line,"");
@@ -205,14 +244,38 @@ Stmt : Exp SEMI {
     $$ = create_node(GRAM_U,"Stmt",@$.first_line,"");
     combine($$,5,$1,$2,$3,$4,$5);
 }
-    | error IF {
-    errinfo(@1.first_line, "Missing \";\" before \"if\"");
+    | IF LP Exp error Stmt %prec LOWER_THAN_ELSE {
+    errinfo(@3.first_line, "Missing \")\"");
 }
-    | error ELSE {
-    errinfo(@1.first_line, "Missing \";\" before \"else\"");
+    | IF LP Exp error Stmt ELSE Stmt {
+    errinfo(@3.first_line, "Missing \")\"");
 }
-    | error WHILE {
-    errinfo(@1.first_line, "Missing \";\" before \"while\"");
+    | IF error Exp RP Stmt %prec LOWER_THAN_ELSE {
+    errinfo(@2.first_line, "Missing \"(\"");
+}
+    | IF error Exp RP Stmt ELSE Stmt {
+    errinfo(@2.first_line, "Missing \"(\"");
+}
+    | IF LP Exp error Exp RP Stmt %prec LOWER_THAN_ELSE {
+    errinfo(@2.first_line, "Missing an operator");
+}
+    | IF LP Exp error Exp RP Stmt ELSE Stmt {
+    errinfo(@2.first_line, "Missing an operator");
+}
+    | WHILE LP Exp error Stmt {
+    errinfo(@3.first_line, "Missing \")\"");
+}
+    | WHILE error Exp RP Stmt {
+    errinfo(@3.first_line, "Missing \"(\"");
+}
+    | WHILE LP Exp error Exp RP Stmt {
+    errinfo(@3.first_line, "Missing an operator");
+}
+    | Exp error {
+    errinfo(@1.first_line, "Missing \";\"");
+}
+    | RETURN Exp error {
+    errinfo(@1.first_line, "Missing \";\"");
 }
     | error SEMI {
     errinfo(@1.first_line, "Invalid statement");
@@ -229,6 +292,12 @@ DefList : Def DefList {
 Def : Specifier DecList SEMI {
     $$ = create_node(GRAM_U,"Def",@$.first_line,"");
     combine($$,3,$1,$2,$3);
+}
+    | Specifier DecList error {
+    errinfo(@1.first_line, "Missing a \";\"");
+}
+    | error SEMI {
+    errinfo(@1.first_line, "Invalid definition");
 }
     ;
 DecList : Dec {
@@ -251,7 +320,19 @@ Dec : VarDec {
     ;
 
 /* Expressions */
-Exp : Exp ASSIGNOP Exp {
+Exp : ID {
+    $$ = create_node(GRAM_U, "Exp", @$.first_line, "");
+    insert($$, $1);
+}
+    | INT {
+    $$ = create_node(GRAM_U, "Exp", @$.first_line,"");
+    insert($$,$1);
+}
+    | FLOAT {
+    $$ = create_node(GRAM_U, "Exp", @$.first_line,"");
+    insert($$,$1);
+}
+    | Exp ASSIGNOP Exp {
     $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
@@ -311,71 +392,59 @@ Exp : Exp ASSIGNOP Exp {
     $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
     combine($$,3,$1,$2,$3);
 }
-    | ID {
-    $$ = create_node(GRAM_U, "Exp", @$.first_line, "");
-    insert($$, $1);
-}
-    | INT {
-    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
-    insert($$,$1);
-}
-    | FLOAT {
-    $$ = create_node(GRAM_U,"Exp",@$.first_line,"");
-    insert($$,$1);
-}
     | Exp PLUS error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error PLUS Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp MINUS error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error MINUS Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp STAR error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error STAR Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp DIV error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error DIV Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp RELOP error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error RELOP Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp ASSIGNOP error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error ASSIGNOP Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp AND error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error AND Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | Exp OR error {
-    errinfo(@3.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | error OR Exp {
-    errinfo(@1.first_line, "Invalid expression, may be missing an left operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a left operand");
 }
     | MINUS error {
-    errinfo(@2.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | NOT error {
-    errinfo(@2.first_line, "Invalid expression, may be missing an right operand");
+    errinfo(@1.first_line, "Invalid expression, may be missing a right operand");
 }
     | LP Exp error RP {
     errinfo(@2.first_line, "Invalid expression between ( )");
@@ -383,8 +452,17 @@ Exp : Exp ASSIGNOP Exp {
     | LP error RP {
     errinfo(@2.first_line, "Invalid expression between ( )");
 }
-    | Exp LB error RB {
-    errinfo(@2.first_line, "Invalid array reference");
+    | ID error Args RP {
+    errinfo(@1.first_line, "Unexpected token, may be missing a \"(\"");
+}
+    | ID error RP {
+    errinfo(@1.first_line, "Unexpected token, may be missing a \"(\"");
+}
+    | ID LP Args error {
+    errinfo(@1.first_line, "Unexpected token, may be missing a \")\"");
+}
+    | ID LP error {
+    errinfo(@1.first_line, "Unexpected token, may be missing a \")\"");
 }
     ;
 Args : Exp COMMA Args {
@@ -393,14 +471,17 @@ Args : Exp COMMA Args {
 }
     | Exp {
     $$ = create_node(GRAM_U,"Args",@$.first_line,"");
-    insert($$,$1);    
+    insert($$,$1);
+}
+    | Exp error Args {
+    errinfo(@1.first_line, "Unexpected token, may be missing a \",\"");
 }
     ;
 
 %%
 
 void yyerror(const char* msg) {
-    fprintf(stderr, "%s\n",msg);
+    fprintf(stderr, "%s--------------------\n",msg);
     error_flag = 1;
 }
 

@@ -1,11 +1,33 @@
+
+struct Node {
+	int k;
+};
+
+struct Node;
+
+int i, j;
+int k;
+int;
+
+int test(int a1, float a2) {
+	return a1 + a2;
+}
+
 int main() {
 	float a[10][2];
 	int i;
 
 	a[5][3] = i + 1.5;
-	if (a[1][2] == 0) { 
-		i = 1
+	if (a[1][2] == 0) {
+		i = 1;
+		test(1, 2.0);
 	}
 	else
-		i = 0; 
+		i = 0;
+
+	while (i + 2 == 1) {
+		int i;
+	}
+
+	return 0;
 }
