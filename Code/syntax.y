@@ -6,7 +6,7 @@
     #include <stdarg.h>
     #include "lex.yy.c"
 
-    #define YYERROR_VERBOSE
+    //#define YYERROR_VERBOSE
 
     #define MAX_CHILDS 8
     #define NODE_SIZE sizeof(struct Node)
@@ -481,7 +481,7 @@ Args : Exp COMMA Args {
 %%
 
 void yyerror(const char* msg) {
-    fprintf(stderr, "%s--------------------\n",msg);
+    //fprintf(stderr, "%s--------------------\n",msg);
     error_flag = 1;
 }
 
@@ -491,7 +491,7 @@ void panic(char* msg) {
 }
 
 void errinfo(int lineno, char* detail) {
-    fprintf(stderr, "Error type B at Line %d: %s.***********************\n", lineno, detail);
+    fprintf(stderr, "Error type B at Line %d: %s.\n", lineno, detail);
 }
 
 /* operations on tree nodes*/

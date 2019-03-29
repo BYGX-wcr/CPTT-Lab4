@@ -8,8 +8,9 @@ int main()
 	/*dffdf
 	fldkfjdflkdjlfdfd
 
-
+	/*
+	*/
 	
 	fdfdf*/
-	int j = ~i;	
+	int j = !i;	
 }

@@ -34,7 +34,7 @@ digit       [0-9]
 id          (_|{letter})(_|{letter}|{digit})*           
 str         \"(.)*\"
 lcomment    \/\/.*$
-bcomment    \/\*(.|\n)*\*\/
+bcomment    \/\*([^"*"]|("*"[^"/"]))*\*\/
 comment     {lcomment}|{bcomment}
 inum        (0|[1-9]{digit}*)    
 fnum        {inum}\.{digit}+
