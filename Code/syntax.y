@@ -262,6 +262,15 @@ Stmt : Exp SEMI {
     | IF LP Exp error Exp RP Stmt ELSE Stmt {
     errinfo(@2.first_line, "Missing an operator");
 }
+    | WHILE LP Exp error Stmt {
+    errinfo(@3.first_line, "Missing \")\"");
+}
+    | WHILE error Exp RP Stmt {
+    errinfo(@3.first_line, "Missing \"(\"");
+}
+    | WHILE LP Exp error Exp RP Stmt {
+    errinfo(@3.first_line, "Missing an operator");
+}
     | Exp error {
     errinfo(@1.first_line, "Missing \";\"");
 }
