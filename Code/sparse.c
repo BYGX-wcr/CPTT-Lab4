@@ -17,10 +17,10 @@ static const unsigned int MAX_ARGS = 10;
 static const unsigned int TABLE_SIZE = 16;
 
 #define NODE_SIZE sizeof(struct Node)
-#define CHECK_ID(vertex, name) strcmp(vertex->id, name)
+#define CHECK_ID(vertex, name) !strcmp(vertex->id, name)
 
 enum MetaType { BASIC, ARRAY, STRUCTURE };
-enum SymbolMetaType { VAR, PROC, TYPEDEF };
+enum SymbolMetaType { VAR, PROC, USER_TYPE };
 
 struct Node {
     bool type; //[Lexical Unit]:true, [Grammatical Unit]:false
@@ -75,8 +75,9 @@ void errorinfo(int type, int lineno, char* description);
 
 void add(struct Symbol* newItem);
 struct Symbol* search(char* name);
+struct Symbol* create_symbol(char* id, int kind);
 
-/* parse functions */
+/* traverse functions */
 
 void semantic_parse(struct Node* root) {
     init();
@@ -116,6 +117,91 @@ void visit(struct Node* vertex) {
 
 void errorinfo(int type, int lineno, char* description) {
     printf("Error type %d at Line %d: %s\n", type, lineno, description);
+}
+
+/* semantic parse function */
+
+void ExtDef(struct Node* vertex) {
+    struct Type type_inh = Specifier(vertex->childs[0]);
+
+    if (CHECK_ID(vertex->childs[1], "ExtDecList")) {
+        ExtDecList(vertex->childs[1], type_inh);
+    }
+    else if (CHECK_ID(vertex->childs[1], "FunDec")) {
+        Struct Symbol* func = FuncDec(vertex->childs[1], type_inh);
+
+        if (CHECK_ID(vertex->childs[2], "CompSt")) {
+            func->defined = true;
+        }
+    }
+}
+
+struct Type Specifier(struct Node* vertex) {
+    if (CHECK_ID(vertex->childs[0], "TYPE")) {
+        struct Type basic_type;
+        basic_type.kind = BASIC;
+        if (strcmp(vertex->childs[0]->info, "INT"))
+            basic_type.basic = INT;
+        else
+            basic_type.basic = FLOAT;
+
+        return basic_type;
+    }
+    else {
+        return StructSpecifier(vertex->childs[0]);
+    }
+}
+
+struct Type StructSpecifier(struct Node* vertex) {
+    if (CHECK_ID(vertex->childs[1], "Tag")) { //struct def reference
+        struct Symbol* id = search(vertex->childs[1]->childs[0]);
+        if (id->kind != USER_TYPE)
+            errorinfo(17, vertex->childs[1]->lineno, "Invalid struct type");
+
+        struct Type type = id->type;
+        return type;
+    }
+    else { //struct definition
+        struct Symbol* id = create_symbol(vertex->childs[1]->childs[0]->info, USER_TYPE);
+        struct Type type = DefList(vertex->childs[3]);
+
+        if (id == NULL) {
+            errorinfo(16, vertex->childs[1]->lineno, "Redefined struct identifier");
+        }
+        else
+            id->type = type;
+
+        return type;
+    }
+}
+
+void ExtDecList(struct Node* vertex, struct Type type_inh) {
+    VarDec(vertex->childs[0], type_inh);
+
+    if (vertex->childs[2] != NULL) {
+        ExtDecList(vertex->childs[2], type_inh);
+    }
+}
+
+struct Type* VarDec(struct Node* vertex, struct Type* type_inh) {
+    if (CHECK_ID(vertex->childs[0], "ID")) {
+        struct Symbol* id = create_symbol(vertex->childs[0], VAR);
+        struct Type* type = type_inh;
+
+        if (id == NULL) {
+            errorinfo(3, vertex->childs[0]->lineno, "Redefined variant");
+        }
+        else
+            id->type = *type;
+
+        return type;
+    }
+    else {
+        struct Type type;
+        type.kind = ARRAY;
+        type.array.elem_type = type_inh;
+        return VarDec(vertex->childs[0], type);
+    }
 }
 
 /* operations on symbol table */
@@ -163,6 +249,20 @@ struct Symbol* search(char* name) {
     }
 
     return NULL;
+}
+
+struct Symbol* create_symbol(char* id, int kind) {
+    struct Symbol* temp = search(id);
+    if (temp != NULL)
+        return NULL;
+
+    temp = malloc(sizeof(struct Symbol));
+    temp->id = malloc(strlen(id) + 1);
+    strcpy(temp->id, id);
+    temp->kind = kind;
+
+    add(temp);
+    return temp;
 }
 
 /* operations on syntax tree nodes*/
