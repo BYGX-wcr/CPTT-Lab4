@@ -26,6 +26,9 @@ syntax: lexical syntax-c
 lexical: $(LFILE)
 	$(FLEX) -o $(LFC) $(LFILE)
 
+# sparse:
+# 	$(CC) sparse.c -o sparse.o
+
 syntax-c: $(YFILE)
 	$(BISON) -o $(YFC) -d -v $(YFILE)
 

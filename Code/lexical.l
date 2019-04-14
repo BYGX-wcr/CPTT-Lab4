@@ -10,7 +10,6 @@
         yylloc.last_column = yycolumn + yyleng - 1; \
         yycolumn += yyleng;
 
-    /* defined in syntax.y */
     #define LEXICAL_U 1
     #define GRAM_U 0
 

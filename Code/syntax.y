@@ -1,31 +1,14 @@
 %{
     #include <stdio.h>
-    #include <memory.h>
-    #include <string.h>
-    #include <assert.h>
-    #include <stdarg.h>
     #include "lex.yy.c"
 
     #define YYERROR_VERBOSE
 
-    #define MAX_CHILDS 8
-    #define NODE_SIZE sizeof(struct Node)
+    extern struct Node;
 
-    struct Node {
-        bool type; //[Lexical Unit]:true, [Grammatical Unit]:false
-        char* id; //[Lexical Unit]:token, [Grammatical Unit]:non-terminals
-        int lineno; //line number
-        char* info; //[Lexical Unit]:details, [Grammatical Unit]:undefined
-        struct Node* childs[MAX_CHILDS]; //pointers to child nodes
-    };
-
-    void panic(char* msg);
-    struct Node* create_node(bool type, char* id, int lineno, const char* info);
-    void insert(struct Node* dest, struct Node* src);
-    void combine(struct Node* dest,int number,...);
-    void destroy_tree(struct Node* root);
-    void display(struct Node* root,int space);
-    void output(struct Node* root);
+    extern struct Node* create_node(bool type, char* id, int lineno, const char* info);
+    extern void insert(struct Node* dest, struct Node* src);
+    extern void combine(struct Node* dest,int number,...);
 
     struct Node* syntax_tree = NULL;
 %}
@@ -85,7 +68,7 @@ ExtDef : Specifier ExtDecList SEMI {
     | Specifier FunDec CompSt {
     $$ = create_node(GRAM_U,"ExtDef",@$.first_line,"");
     combine($$,3,$1,$2,$3);
-} 
+}
     ;
 ExtDecList : VarDec {
     $$ = create_node(GRAM_U,"ExtDecList",@$.first_line,"");
@@ -316,109 +299,3 @@ Args : Exp COMMA Args {
     ;
 
 %%
-
-void panic(char* msg) {
-    fprintf(stderr, "%s\n", msg);
-    assert(0);
-}
-
-/* operations on tree nodes*/
-
-struct Node* create_node(bool type, char* id, int lineno, const char* info) {
-    struct Node* res = malloc(NODE_SIZE);
-    memset(res, 0, NODE_SIZE);             // Nodes initialized
-
-    res->type = type;
-    res->lineno = lineno;
-    
-    if (strlen(id) == 0)
-        panic("Invalid Id\n");
-    res->id = malloc(strlen(id) + 1);
-    strcpy(res->id, id);
-
-    res->info = malloc(strlen(info) + 1);
-    strcpy(res->info, info);
-
-    return res;
-}
-
-void destroy_tree(struct Node* root) {
-    free(root->id);
-    free(root->info);
-
-    int pos = 0;
-    while (pos < MAX_CHILDS && root->childs[pos] != NULL) {
-        destroy_tree(root->childs[pos]);
-        pos++;
-    }
-    free(root);
-}
-
-void insert(struct Node* dest, struct Node* src) {
-    //find a empty position to insert
-    int pos = 0;
-    while (pos < MAX_CHILDS && dest->childs[pos] != NULL) pos++;
-
-    if (pos == MAX_CHILDS) {
-        panic("childs are too many!");
-    }
-    else {
-        dest->childs[pos] = src;
-    }
-}
-
-void combine(struct Node *dest,int number,...){
-    struct Node* src = NULL;
-    va_list ap;
-    va_start(ap,number); // start behind number
-    for(int i = 0; i < number; i++){
-        src = va_arg(ap,struct Node *);
-        insert(dest,src);
-    }
-    va_end(ap);
-}
-
-void display(struct Node* root,int space) {
-    if(root->type == LEXICAL_U) {                // lexical
-        for(int k = 0;k < space;k++) {          // printf space
-            printf(" ");
-        }
-        if(strcmp(root->id,"ID") == 0) {          // ID
-            printf("%s: %s\n",root->id,root->info);
-        }      
-        else if(strcmp(root->id,"TYPE") == 0) {   // TYPE
-            printf("%s: %s\n",root->id,root->info);
-        }
-        else if(strcmp(root->id,"INT") == 0) {   // INT
-            printf("%s: %d\n",root->id,atoi(root->info));
-        }
-        else if(strcmp(root->id,"FLOAT") == 0) {   // FLOAT
-            printf("%s: %f\n",root->id,atof(root->info));
-        }
-        else {
-            printf("%s\n",root->id);
-        }
-    }
-    else {                                // programmer 
-        if(root->childs[0] != NULL) {     // not empty 
-            for(int k = 0;k < space;k++) {  // printf space
-                printf(" ");
-            }
-            printf("%s (%d)\n",root->id,root->lineno); 
-            space += 2;                  // space add 2
-            for(int i = 0;(i < MAX_CHILDS) && (root->childs[i] != NULL);i++) {
-                display(root->childs[i],space);
-            }
-        }
-    }
-}
-
-void output(struct Node* root) {
-    if(root == NULL){
-        panic("this tree is empty !\n");
-        return;
-    }
-    int space = 0;
-    display(root, space);
-    destroy_tree(root);
-}
