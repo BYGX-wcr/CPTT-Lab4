@@ -5,13 +5,22 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
-#define LEXICAL_U 1
-#define GRAM_U 0
+/* type and constant value definitions */
 
-#define MAX_CHILDS 8
+static const int LEXICAL_U = 1;
+static const int GRAM_U = 0;
+static const int INT = 0;
+static const int FLOAT = 1;
+
+static const unsigned int MAX_CHILDS = 8;
+static const unsigned int MAX_ARGS = 10;
+static const unsigned int TABLE_SIZE = 16;
+
 #define NODE_SIZE sizeof(struct Node)
+#define CHECK_ID(vertex, name) strcmp(vertex->id, name)
 
-#define CHECK(vertex, name) strcmp(vertex->id, name)
+enum MetaType { BASIC, ARRAY, STRUCTURE };
+enum SymbolMetaType { VAR, PROC, TYPEDEF };
 
 struct Node {
     bool type; //[Lexical Unit]:true, [Grammatical Unit]:false
@@ -21,17 +30,55 @@ struct Node {
     struct Node* childs[MAX_CHILDS]; //pointers to child nodes
 };
 
+struct FieldList {
+    char* id;
+    struct Type* type;
+    struct FieldList* next;
+};
+
+struct Type {
+    enum MetaType kind;
+    union {
+        int basic; //0-int, 1-float
+        struct { struct Type* elem_type; int size; } array;
+        struct FieldList structure;
+    };
+};
+
+struct Symbol {
+    char* id;
+    enum SymbolMetaType kind;
+    bool defined;
+    union {
+        struct Type type;
+        struct {
+            struct Type ret_type;
+            struct Type argtype_list[MAX_ARGS];
+        } proc_type;
+    };
+};
+
+struct SymbolTableItem {
+    struct Symbol* id;
+    struct SymbolTableItem* next;
+};
+
+/* global variant definitions */
+
+static struct SymbolTableItem* symbol_table[TABLE_SIZE]; //A hash table
+
+/* function declarations */
+
 void init();
 void visit(struct Node* vertex);
 void errorinfo(int type, int lineno, char* description);
 
-void panic(char* msg) {
-    fprintf(stderr, "%s\n", msg);
-    assert(0);
-}
+void add(struct Symbol* newItem);
+struct Symbol* search(char* name);
+
+/* parse functions */
 
 void semantic_parse(struct Node* root) {
-
     init();
     visit(root);
 }
@@ -40,22 +87,85 @@ void init() {
 
 }
 
+void panic(char* msg) {
+    fprintf(stderr, "%s\n", msg);
+    assert(0);
+}
+
 void visit(struct Node* vertex) {
-    if (CHECK(vertex, "VarDec")) {
-        VarDec(vertex);
+    if (vertex == NULL)
+        panic("Null Vertex Pointer");
+
+    if (CHECK_ID(vertex, "ExtDef")) {
+        ExtDef(vertex);
     }
-    else if (CHECK(vertex, "Exp")) {
+    else if (CHECK_ID(vertex, "Def")) {
+        Def(vertex);
+    }
+    else if (CHECK_ID(vertex, "Exp")) {
         Exp(vertex);
     }
-    else
-        visit(vertex);
+    else {
+        int ptr = 0;
+        while (ptr < MAX_CHILDS && vertex->childs[ptr] != NULL) {
+            visit(vertex->childs[ptr]);
+            ++ptr;
+        }
+    }
 }
 
 void errorinfo(int type, int lineno, char* description) {
     printf("Error type %d at Line %d: %s\n", type, lineno, description);
 }
 
-/* operations on tree nodes*/
+/* operations on symbol table */
+
+unsigned int hash(char *str) {
+    unsigned int val = 0, i = 0;
+    while (*str != 0) {
+        val = (val << 2) + *str;
+        if (i = val & ~TABLE_SIZE) val = (val ^ (i >> 12)) & TABLE_SIZE;
+    }
+
+    return val;
+}
+
+void add(struct Symbol* newItem) {
+    if (newItem == NULL)
+        panic("Null new item");
+
+    int pos = hash(newItem->id);
+    struct SymbolTableItem* head = symbol_table[pos];
+
+    //insert into the top pos
+    if (head == NULL) {
+        head = malloc(sizeof(struct SymbolTableItem));
+        head->id = newItem;
+        head->next = NULL;
+    }
+    else {
+        struct SymbolTableItem* temp = malloc(sizeof(struct SymbolTableItem));
+        temp->id = newItem;
+        temp->next = head;
+        symbol_table[pos] = temp;
+    }
+}
+
+struct Symbol* search(char* name) {
+    int pos = hash(name);
+    struct SymbolTableItem* head = symbol_table[pos];
+
+    while (head != NULL) {
+        if (CHECK_ID(head->id, name))
+            return head->id;
+
+        head = head->next;
+    }
+
+    return NULL;
+}
+
+/* operations on syntax tree nodes*/
 
 struct Node* create_node(bool type, char* id, int lineno, const char* info) {
     struct Node* res = malloc(NODE_SIZE);
@@ -106,7 +216,7 @@ void combine(struct Node *dest,int number,...){
     va_start(ap,number); // start behind number
     for(int i = 0; i < number; i++){
         src = va_arg(ap,struct Node *);
-        insert(dest,src);
+        insert(dest, src);
     }
     va_end(ap);
 }
