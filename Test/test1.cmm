@@ -1,6 +1,7 @@
 int main()
 {
-	int i = 1;/*dflkdfjdk
+	int i = 1;
+	/*dflkdfjdk
 	fldkfjdflkdjlf*/
 	/*dffdf
 	fldkfjdflkdjlfdfd
@@ -9,5 +10,5 @@ int main()
 	*/
 	
 	fdfdf*/
-	int j = !i;	
+	int j = ~i;	
 }

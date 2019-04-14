@@ -89,7 +89,7 @@ ExtDef : Specifier ExtDecList SEMI {
     | Specifier FunDec CompSt {
     $$ = create_node(GRAM_U,"ExtDef",@$.first_line,"");
     combine($$,3,$1,$2,$3);
-}
+} 
     | Specifier ExtDecList error {
     errinfo(@2.last_line, "Missing \";\"");
 }
@@ -98,7 +98,7 @@ ExtDef : Specifier ExtDecList SEMI {
 }
     | error SEMI {
     errinfo(@1.first_line, "Invalid explicit definition");
-}
+} 
     ;
 ExtDecList : VarDec {
     $$ = create_node(GRAM_U,"ExtDecList",@$.first_line,"");
@@ -207,9 +207,7 @@ CompSt : LC DefList StmtList RC {
     | LC DefList StmtList error {
     //errinfo(@4.first_line, "Missing \"}\"");
 }
-    | error DefList StmtList RC {
-    errinfo(@1.first_line, "May be missing \"{\"");
-}
+
     ;
 StmtList : Stmt StmtList {
     $$ = create_node(GRAM_U,"StmtList",@$.first_line,"");
@@ -490,7 +488,7 @@ Args : Exp COMMA Args {
 %%
 
 void yyerror(const char* msg) {
-    fprintf(stderr, "%s--------------------\n",msg);
+    //fprintf(stderr, "%s--------------------\n",msg);
     error_flag = 1;
 }
 
@@ -500,7 +498,7 @@ void panic(char* msg) {
 }
 
 void errinfo(int lineno, char* detail) {
-    fprintf(stderr, "Error type B at Line %d: %s.****************************\n", lineno, detail);
+    fprintf(stderr, "Error type B at Line %d: %s.\n", lineno, detail);
 }
 
 /* operations on tree nodes*/
