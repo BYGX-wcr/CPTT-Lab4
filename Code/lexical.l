@@ -108,6 +108,5 @@ int str_func()
 int error_func()
 {
     printf("Error type A at Line %d: Mysterious character \"%s\"\n", yylineno, yytext);
-    error_flag = 1;
     return 1;
 }
