@@ -43,7 +43,7 @@ struct Type {
     union {
         int basic; //0-int, 1-float
         struct { struct Type* elem_type; int size; } array;
-        struct FieldList structure;
+        struct FieldList* structure;
     };
 };
 
@@ -105,8 +105,8 @@ void visit(struct Node* vertex) {
     if (CHECK_ID(vertex, "ExtDef")) {
         ExtDef(vertex);
     }
-    else if (CHECK_ID(vertex, "Def")) {
-        Def(vertex);
+    else if (CHECK_ID(vertex, "DefList")) {
+        DefList(vertex);
     }
     else if (CHECK_ID(vertex, "Exp")) {
         Exp(vertex);
@@ -135,7 +135,7 @@ void ExtDef(struct Node* vertex) {
     else if (CHECK_ID(vertex->childs[1], "FunDec")) {
         struct Symbol* func = FuncDec(vertex->childs[1], type_inh);
 
-        if (CHECK_ID(vertex->childs[2], "CompSt")) {
+        if (CHECK_ID(vertex->childs[2], "CompSt") && func != NULL) {
             func->defined = true;
         }
     }
@@ -167,7 +167,8 @@ struct Type* StructSpecifier(struct Node* vertex) {
     }
     else { //struct definition
         struct Symbol* id = create_symbol(vertex->childs[1]->childs[0]->info, USER_TYPE);
-        struct Type* type = DefList(vertex->childs[3]); /* TODO: DefList return Type or FieldList */
+        struct Type* type = create_type(STRUCTURE);
+        type->structure = DefList(vertex->childs[3]);
 
         if (id == NULL) {
             errorinfo(16, vertex->childs[1]->lineno, "Redefined struct identifier");
@@ -187,9 +188,9 @@ void ExtDecList(struct Node* vertex, struct Type* type_inh) {
     }
 }
 
-struct Type* VarDec(struct Node* vertex, struct Type* type_inh) {
+struct Symbol* VarDec(struct Node* vertex, struct Type* type_inh) {
     if (CHECK_ID(vertex->childs[0], "ID")) {
-        struct Symbol* id = create_symbol(vertex->childs[0], VAR);
+        struct Symbol* id = create_symbol(vertex->childs[0]->info, VAR);
         struct Type* type = type_inh;
 
         if (id == NULL) {
@@ -198,15 +199,89 @@ struct Type* VarDec(struct Node* vertex, struct Type* type_inh) {
         else
             id->type = type;
 
-        return type;
+        return id;
     }
     else {
-        struct Type* type = malloc(sizeof(struct Type));
-        type->kind = ARRAY;
+        struct Type* type = create_type(ARRAY);
         type->array.elem_type = type_inh;
         type->array.size = atoi(vertex->childs[2]->info);
         return VarDec(vertex->childs[0], type);
     }
+}
+
+struct Symbol* FuncDec(struct Node* vertex, struct Type* type_inh) {
+    struct Symbol* func = create_symbol(vertex->childs[0]->info, PROC);
+    if (func == NULL) {
+        errorinfo(4, vertex->childs[0]->lineno, "Redefined function");
+        return func;
+    }
+
+    func->proc_type.ret_type = type_inh;
+    if (CHECK_ID(vertex->childs[2], "RP")) {
+        return func;
+    }
+    else {
+        VarList(vertex->childs[2], func, 0);
+        return func;
+    }
+}
+
+void VarList(struct Node* vertex, struct Symbol* func, int pos) {
+    if (func->kind != PROC) {
+        panic("Unexpected Non process function id");
+    }
+    else if (pos >= MAX_ARGS) {
+        panic("Too many arguments for a function");
+    }
+    
+    func->proc_type.argtype_list[pos] = ParamDec(vertex->childs[0])->type;
+    if (vertex->childs[1] != NULL) {
+        VarList(vertex->childs[2], func, pos + 1);
+    }
+}
+
+struct Symbol* ParamDec(struct Node* vertex) {
+    struct Type* type_inh = Specifier(vertex->childs[0]);
+
+    return VarDec(vertex, type_inh);
+}
+
+struct FieldList* DefList(struct Node* vertex) {
+    struct FieldList* fl_syn = NULL;
+    if (vertex->childs[0] != NULL) {
+        fl_syn = Def(vertex->childs[0]);
+        struct FieldList* tail = fl_syn;
+        while (tail->next != NULL) tail = tail->next;
+
+        //connect sublist to the tail
+        tail->next = DefList(vertex->childs[1]);
+    }
+    return fl_syn;
+}
+
+struct FieldList* Def(struct Node* vertex) {
+    struct Type* type_inh = Specifier(vertex->childs[0]);
+
+    return DecList(vertex->childs[1], type_inh);
+}
+
+struct FieldList* DecList(struct Node* vertex, struct Type* type_inh) {
+    struct Symbol* var = Dec(vertex->childs[0], type_inh);
+    struct FieldList* fl_syn = create_field(var->id, var->type);
+
+    if (vertex->childs[2] != NULL) {
+        fl_syn->next = DecList(vertex->childs[2], type_inh);
+    }
+
+    return fl_syn;
+}
+
+struct Symbol* Dec(struct Node* vertex, struct Type* type_inh) {
+    struct Symbol* var = VarDec(vertex->childs[0], type_inh);
+
+    /* TODO: check = Exp */
+
+    return var;
 }
 
 /* operations on symbol table */
@@ -262,11 +337,32 @@ struct Symbol* create_symbol(char* id, int kind) {
         return NULL;
 
     temp = malloc(sizeof(struct Symbol));
+    memset(temp, 0, sizeof(struct Symbol));
+
     temp->id = malloc(strlen(id) + 1);
     strcpy(temp->id, id);
     temp->kind = kind;
 
     add(temp);
+    return temp;
+}
+
+struct Type* create_type(int kind) {
+    struct Type* temp = malloc(sizeof(struct Type));
+    memset(temp, 0, sizeof(struct Type));
+
+    temp->kind = kind;
+    return temp;
+}
+
+struct FieldList* create_field(char* id, struct Type* type) {
+    struct FieldList* temp = malloc(sizeof(struct FieldList));
+    memset(temp, 0, sizeof(struct FieldList));
+
+    temp->id = malloc(strlen(id) + 1);
+    strcpy(temp->id, id);
+    temp->type = type;
+
     return temp;
 }
 
