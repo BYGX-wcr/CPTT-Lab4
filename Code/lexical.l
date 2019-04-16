@@ -10,7 +10,6 @@
         yylloc.last_column = yycolumn + yyleng - 1; \
         yycolumn += yyleng;
 
-    /* defined in syntax.y */
     #define LEXICAL_U 1
     #define GRAM_U 0
 
@@ -109,6 +108,5 @@ int str_func()
 int error_func()
 {
     printf("Error type A at Line %d: Mysterious character \"%s\"\n", yylineno, yytext);
-    error_flag = 1;
     return 1;
 }

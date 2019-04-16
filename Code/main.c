@@ -4,11 +4,10 @@ extern struct Node;
 extern FILE* yyin;
 extern int yylineno;
 extern struct Node* syntax_tree;
-extern int error_flag;
 
 extern int yyrestart();
 extern int yyparse();
-extern void output(struct Node* root);
+extern void semantic_parse(struct Node* root);
 
 // main function for flex
 int main(int argc, char** argv) {
@@ -21,8 +20,8 @@ int main(int argc, char** argv) {
     /* start token analysis */
     yylineno = 1;
     yyrestart(yyin);
-    if(yyparse() == 0 && !error_flag){
-        output(syntax_tree);
-    }
+    yyparse();
+    semantic_parse(syntax_tree);
+
     return 0;
 }
