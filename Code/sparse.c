@@ -22,8 +22,8 @@
 #define INT_PTR &INT_T
 #define FLOAT_PTR &FLOAT_T
 
-enum MetaType { BASIC, ARRAY, STRUCTURE };
-enum SymbolMetaType { VAR, PROC, USER_TYPE };
+enum MetaType { BASIC, ARRAY, STRUCTURE };  
+enum SymbolMetaType { VAR, PROC, USER_TYPE };  // var, function, structure
 
 struct Node {
     bool type;                          //[Lexical Unit]:true, [Grammatical Unit]:false
@@ -33,14 +33,14 @@ struct Node {
     struct Node* childs[MAX_CHILDS];    //pointers to child nodes
 };
 
-struct FieldList {
+struct FieldList {                  
     char* id;                           //name of id
     struct Type* type;                  //type of id
     struct FieldList* next;
 };
 
 struct Type {
-    enum MetaType kind;                 //meta type of the Type
+    enum MetaType kind;                 //meta type of the Type : BASIC, ARRAY, STRUCTURE
     union {
         int basic;                      //0-int, 1-float
         struct { struct Type* elem_type; int size; } array;
@@ -56,8 +56,8 @@ struct Symbol {
     union {
         struct Type* type;
         struct {
-            struct Type* ret_type;
-            struct Type* argtype_list[MAX_ARGS];
+            struct Type* ret_type;      //return type
+            struct Type* argtype_list[MAX_ARGS];    //args_list type
         } proc_type;                    //type definition for function
     };
 };
@@ -71,7 +71,7 @@ struct SymbolTableItem {
 
 static struct SymbolTableItem* symbol_table[TABLE_SIZE]; //A hash table
 
-const static struct Type INT_T = { BASIC, INT };
+const static struct Type INT_T = { BASIC, INT };  //initialize the type int, float
 const static struct Type FLOAT_T = { BASIC, FLOAT };
 
 /* function declarations */
@@ -81,6 +81,7 @@ void visit(struct Node* vertex);
 void final_check();
 void panic(char* msg);
 void errorinfo(int type, int lineno, char* description);
+void display_symbol();
 
 void add(struct Symbol* newItem);
 struct Symbol* search(char* name);
@@ -112,11 +113,14 @@ void semantic_parse(struct Node* root) {
         visit(root);
     else
         panic("Unexpected semantic parsing object!");
-    
+
     final_check();
+
+    display_symbol();
 }
 
 void init() {
+    memset(symbol_table,0,sizeof(struct SymbolTableItem *)*TABLE_SIZE);
 }
 
 void final_check() {
@@ -171,11 +175,11 @@ void ExtDef(struct Node* vertex) {
     if (CHECK_ID(vertex->childs[1], "ExtDecList")) {
         ExtDecList(vertex->childs[1], type_inh);
     }
-    else if (CHECK_ID(vertex->childs[1], "FunDec")) {
+    else if (CHECK_ID(vertex->childs[1], "FunDec")) {           
         struct Symbol* func = FuncDec(vertex->childs[1], type_inh);
 
         if (CHECK_ID(vertex->childs[2], "CompSt") && func != NULL) {
-            func->defined = true;
+            func->defined = true;                                   // function is defined here
         }
     }
 }
@@ -187,7 +191,6 @@ struct Type* Specifier(struct Node* vertex) {
             basic_type = INT_PTR;
         else
             basic_type = FLOAT_PTR;
-
         return basic_type;
     }
     else {
@@ -248,14 +251,14 @@ struct Symbol* VarDec(struct Node* vertex, struct Type* type_inh) {
     }
 }
 
-struct Symbol* FuncDec(struct Node* vertex, struct Type* type_inh) {
-    struct Symbol* func = search(vertex->childs[0]->info);
+struct Symbol* FuncDec(struct Node* vertex, struct Type* type_inh) {                    
+    struct Symbol* func = search(vertex->childs[0]->info);                          
     struct Symbol* former = NULL;
     if (func == NULL) { //first appear
-        func = create_symbol(vertex->childs[0]->info, PROC, vertex->childs[0]->lineno);
+        func = create_symbol(vertex->childs[0]->info, PROC, vertex->childs[0]->lineno);         
     }
-    else { //appear again, need to check
-        former = func;
+    else { //appear again, need to check       
+        former = func;                                                                                  
 
         func = malloc(sizeof(struct Symbol));
         memset(func, 0, sizeof(struct Symbol));
@@ -350,14 +353,23 @@ struct Symbol* Dec(struct Node* vertex, struct Type* type_inh) {
 /* operations on data structure for semantic parsing */
 
 // hash function used by symbol table
-unsigned int hash(char *str) {
+/*unsigned int hash(char *str) {
     unsigned int val = 0, i = 0;
-    while (*str != 0) {
+    for(; *str; ++str) {
         val = (val << 2) + *str;
         if (i = val & ~TABLE_SIZE) val = (val ^ (i >> 12)) & TABLE_SIZE;
     }
-
+    printf("%d\n",val);
     return val;
+}*/
+
+// BKDR Hash Function used for symbol table
+unsigned int hash(char *str) {
+    unsigned int val = 5381;
+    while(*str) {
+        val += (val << 5) + (*str++);
+    }                   
+    return ((val & 0x7fffffff)%TABLE_SIZE);
 }
 
 // insert a symbol into the symbol table
@@ -365,14 +377,15 @@ void add(struct Symbol* newItem) {
     if (newItem == NULL)
         panic("Null new item");
 
-    int pos = hash(newItem->id);
+    int pos = hash(newItem->id);    
     struct SymbolTableItem* head = symbol_table[pos];
 
     //insert into the top pos
-    if (head == NULL) {
+    if (head == NULL) {             
         head = malloc(sizeof(struct SymbolTableItem));
         head->id = newItem;
         head->next = NULL;
+        symbol_table[pos] = head;
     }
     else {
         struct SymbolTableItem* temp = malloc(sizeof(struct SymbolTableItem));
@@ -383,9 +396,9 @@ void add(struct Symbol* newItem) {
 }
 
 // search the symbol in the symbol table, return NULL, if not found
-struct Symbol* search(char* name) {
-    int pos = hash(name);
-    struct SymbolTableItem* head = symbol_table[pos];
+struct Symbol* search(char* name) {         
+    int pos = hash(name);                                  
+    struct SymbolTableItem* head = symbol_table[pos];           
 
     while (head != NULL) {
         if (CHECK_ID(head->id, name))
@@ -411,7 +424,7 @@ struct Symbol* create_symbol(char* id, int kind, int first_lineno) {
     temp->kind = kind;
     temp->first_lineno = first_lineno;
 
-    add(temp);
+    add(temp);                   
     return temp;
 }
 
@@ -464,6 +477,20 @@ bool comp_type(struct Type* ltype, struct Type* rtype) {
         }
     }
 }
+
+void display_symbol() {
+    //  symbol_table[TABLE_SIZE]
+    for(int i = 0; i < TABLE_SIZE; i++) {   
+        if(symbol_table[i] != NULL) {                       printf("%d\n",i);    
+            struct SymbolTableItem *p = symbol_table[i];
+            while(p != NULL) {
+                printf("ID is %s \n",p->id->id);  
+                p = p->next;        
+            }
+        }
+    }
+}
+
 
 /* operations on syntax tree nodes*/
 

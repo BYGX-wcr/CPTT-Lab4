@@ -22,6 +22,5 @@ int main(int argc, char** argv) {
     yyrestart(yyin);
     yyparse();
     semantic_parse(syntax_tree);
-
     return 0;
 }
