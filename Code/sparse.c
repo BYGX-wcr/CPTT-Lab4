@@ -21,6 +21,12 @@
 #define CHECK_ID(vertex, name) !strcmp(vertex->id, name)
 #define INT_PTR &INT_T
 #define FLOAT_PTR &FLOAT_T
+#define SAFE_ID(vertex, name) \
+if (strcmp(vertex->id,name)) \
+{   \
+    printf("%s\n",vertex->id); \
+    panic("type is not the same!!"); \
+}\
 
 enum MetaType { BASIC, ARRAY, STRUCTURE };  
 enum SymbolMetaType { VAR, PROC, USER_TYPE };  // var, function, structure
@@ -95,7 +101,7 @@ struct Type* Specifier(struct Node* vertex);
 struct Type* StructSpecifier(struct Node* vertex);
 void ExtDecList(struct Node* vertex, struct Type* type_inh);
 struct Symbol* VarDec(struct Node* vertex, struct Type* type_inh);
-struct Symbol* FuncDec(struct Node* vertex, struct Type* type_inh);
+struct Symbol* FunDec(struct Node* vertex, struct Type* type_inh);
 struct Symbol* Dec(struct Node* vertex, struct Type* type_inh);
 struct Symbol* ParamDec(struct Node* vertex);
 void VarList(struct Node* vertex, struct Symbol* func, int pos);
@@ -170,13 +176,14 @@ void errorinfo(int type, int lineno, char* description) {
 /* semantic parse function */
 
 void ExtDef(struct Node* vertex) {
+    SAFE_ID(vertex,"ExtDef");
     struct Type* type_inh = Specifier(vertex->childs[0]);
 
     if (CHECK_ID(vertex->childs[1], "ExtDecList")) {
         ExtDecList(vertex->childs[1], type_inh);
     }
     else if (CHECK_ID(vertex->childs[1], "FunDec")) {           
-        struct Symbol* func = FuncDec(vertex->childs[1], type_inh);
+        struct Symbol* func = FunDec(vertex->childs[1], type_inh);
 
         if (CHECK_ID(vertex->childs[2], "CompSt") && func != NULL) {
             func->defined = true;                                   // function is defined here
@@ -185,6 +192,7 @@ void ExtDef(struct Node* vertex) {
 }
 
 struct Type* Specifier(struct Node* vertex) {
+    SAFE_ID(vertex,"Specifier");
     if (CHECK_ID(vertex->childs[0], "TYPE")) {
         struct Type* basic_type;
         if (strcmp(vertex->childs[0]->info, "INT"))
@@ -199,6 +207,7 @@ struct Type* Specifier(struct Node* vertex) {
 }
 
 struct Type* StructSpecifier(struct Node* vertex) {
+    SAFE_ID(vertex,"StructSpecifier");
     if (CHECK_ID(vertex->childs[1], "Tag")) { //struct def reference
         struct Symbol* id = search(vertex->childs[1]->childs[0]->info);
         if (id->kind != USER_TYPE)
@@ -223,6 +232,7 @@ struct Type* StructSpecifier(struct Node* vertex) {
 }
 
 void ExtDecList(struct Node* vertex, struct Type* type_inh) {
+    SAFE_ID(vertex,"ExtDecList");
     VarDec(vertex->childs[0], type_inh);
 
     if (vertex->childs[2] != NULL) {
@@ -231,6 +241,7 @@ void ExtDecList(struct Node* vertex, struct Type* type_inh) {
 }
 
 struct Symbol* VarDec(struct Node* vertex, struct Type* type_inh) {
+    SAFE_ID(vertex,"VarDec");
     if (CHECK_ID(vertex->childs[0], "ID")) {
         struct Symbol* id = create_symbol(vertex->childs[0]->info, VAR, vertex->childs[0]->lineno);
         struct Type* type = type_inh;
@@ -251,11 +262,12 @@ struct Symbol* VarDec(struct Node* vertex, struct Type* type_inh) {
     }
 }
 
-struct Symbol* FuncDec(struct Node* vertex, struct Type* type_inh) {                    
-    struct Symbol* func = search(vertex->childs[0]->info);                          
+struct Symbol* FunDec(struct Node* vertex, struct Type* type_inh) {  
+    SAFE_ID(vertex,"FunDec");                                          
+    struct Symbol* func = search(vertex->childs[0]->info);                         
     struct Symbol* former = NULL;
-    if (func == NULL) { //first appear
-        func = create_symbol(vertex->childs[0]->info, PROC, vertex->childs[0]->lineno);         
+    if (func == NULL) { //first appear                      
+        func = create_symbol(vertex->childs[0]->info, PROC, vertex->childs[0]->lineno);        
     }
     else { //appear again, need to check       
         former = func;                                                                                  
@@ -271,7 +283,7 @@ struct Symbol* FuncDec(struct Node* vertex, struct Type* type_inh) {
     }
 
     func->proc_type.ret_type = type_inh;
-    if (CHECK_ID(vertex->childs[2], "VarList")) {
+    if (CHECK_ID(vertex->childs[2], "VarList")) {      
         VarList(vertex->childs[2], func, 0);
     }
 
@@ -293,26 +305,32 @@ struct Symbol* FuncDec(struct Node* vertex, struct Type* type_inh) {
 }
 
 void VarList(struct Node* vertex, struct Symbol* func, int pos) {
+    SAFE_ID(vertex,"VarList");
+    printf("%s\n",vertex->id);
+    SAFE_ID(vertex,"VarList");                // wrong ????
     if (func->kind != PROC) {
         panic("Unexpected Non process function id");
     }
     else if (pos >= MAX_ARGS) {
         panic("Too many arguments for a function");
     }
-    
-    func->proc_type.argtype_list[pos] = ParamDec(vertex->childs[0])->type;
+                                                                           
+    func->proc_type.argtype_list[pos] = ParamDec(vertex->childs[0])->type; 
     if (vertex->childs[1] != NULL) {
         VarList(vertex->childs[2], func, pos + 1);
     }
 }
 
 struct Symbol* ParamDec(struct Node* vertex) {
+    SAFE_ID(vertex,"ParamDec");
     struct Type* type_inh = Specifier(vertex->childs[0]);
 
-    return VarDec(vertex, type_inh);
+    return VarDec(vertex->childs[1], type_inh);
+   //return VarDec(vertex, type_inh); 
 }
 
 struct FieldList* DefList(struct Node* vertex) {
+    SAFE_ID(vertex,"DefList");
     struct FieldList* fl_syn = NULL;
     if (vertex->childs[0] != NULL) {
         fl_syn = Def(vertex->childs[0]);
@@ -326,12 +344,14 @@ struct FieldList* DefList(struct Node* vertex) {
 }
 
 struct FieldList* Def(struct Node* vertex) {
+    SAFE_ID(vertex,"Def");
     struct Type* type_inh = Specifier(vertex->childs[0]);
 
     return DecList(vertex->childs[1], type_inh);
 }
 
 struct FieldList* DecList(struct Node* vertex, struct Type* type_inh) {
+    SAFE_ID(vertex,"DecList");
     struct Symbol* var = Dec(vertex->childs[0], type_inh);
     struct FieldList* fl_syn = create_field(var->id, var->type);
 
@@ -343,6 +363,7 @@ struct FieldList* DecList(struct Node* vertex, struct Type* type_inh) {
 }
 
 struct Symbol* Dec(struct Node* vertex, struct Type* type_inh) {
+    SAFE_ID(vertex,"Dec");
     struct Symbol* var = VarDec(vertex->childs[0], type_inh);
 
     /* TODO: check = Exp */
@@ -377,7 +398,7 @@ void add(struct Symbol* newItem) {
     if (newItem == NULL)
         panic("Null new item");
 
-    int pos = hash(newItem->id);    
+    int pos = hash(newItem->id);                    printf("hash pos %d\n",pos);
     struct SymbolTableItem* head = symbol_table[pos];
 
     //insert into the top pos
