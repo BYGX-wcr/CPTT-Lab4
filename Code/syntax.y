@@ -2,13 +2,15 @@
     #include <stdio.h>
     #include "lex.yy.c"
 
-    #define YYERROR_VERBOSE
+    //#define YYERROR_VERBOSE
 
-    extern struct Node;
+    //extern struct Node;
 
     extern struct Node* create_node(bool type, char* id, int lineno, const char* info);
     extern void insert(struct Node* dest, struct Node* src);
     extern void combine(struct Node* dest, int number, ...);
+
+    void yyerror(const char *s);
 
     struct Node* syntax_tree = NULL;
 %}
