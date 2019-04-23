@@ -88,6 +88,7 @@ void final_check();
 void panic(char* msg);
 void errorinfo(int type, int lineno, char* description);
 void display_symbol();
+void output(struct Node* root);
 
 void add(struct Symbol* newItem);
 struct Symbol* search(char* name);
@@ -97,6 +98,7 @@ struct FieldList* create_field(char* id, struct Type* type);
 bool comp_type(struct Type* ltype, struct Type* rtype);
 
 void ExtDef(struct Node* vertex);
+void CompSt(struct Node *vertex);
 struct Type* Specifier(struct Node* vertex);
 struct Type* StructSpecifier(struct Node* vertex);
 void ExtDecList(struct Node* vertex, struct Type* type_inh);
@@ -123,6 +125,7 @@ void semantic_parse(struct Node* root) {
     final_check();
 
     display_symbol();
+    //output(root);
 }
 
 void init() {
@@ -150,19 +153,19 @@ void panic(char* msg) {
 }
 
 //use DFS to visit the node of syntax tree
-void visit(struct Node* vertex) {
+void visit(struct Node* vertex) {     
     if (vertex == NULL)
         panic("Null Vertex Pointer");
-
-    if (CHECK_ID(vertex, "ExtDef")) {
+                                                
+    if (CHECK_ID(vertex, "ExtDef")) {       
         ExtDef(vertex);
     }
-    else if (CHECK_ID(vertex, "DefList")) {
+    else if (CHECK_ID(vertex, "DefList")) {        
         DefList(vertex);
     }
-    else {
+    else {         
         int ptr = 0;
-        while (ptr < MAX_CHILDS && vertex->childs[ptr] != NULL) {
+        while (ptr < MAX_CHILDS && vertex->childs[ptr] != NULL) {       
             visit(vertex->childs[ptr]);
             ++ptr;
         }
@@ -186,12 +189,21 @@ void ExtDef(struct Node* vertex) {
         struct Symbol* func = FunDec(vertex->childs[1], type_inh);
 
         if (CHECK_ID(vertex->childs[2], "CompSt") && func != NULL) {
-            func->defined = true;                                   // function is defined here
+            func->defined = true;    
+                                           // function is defined here
+            CompSt(vertex->childs[2]);                               
+            
         }
     }
 }
 
-struct Type* Specifier(struct Node* vertex) {
+void CompSt(struct Node *vertex) {
+    SAFE_ID(vertex,"CompSt");
+    
+
+}
+
+struct Type* Specifier(struct Node* vertex) {   
     SAFE_ID(vertex,"Specifier");
     if (CHECK_ID(vertex->childs[0], "TYPE")) {
         struct Type* basic_type;
@@ -242,7 +254,7 @@ void ExtDecList(struct Node* vertex, struct Type* type_inh) {
 
 struct Symbol* VarDec(struct Node* vertex, struct Type* type_inh) {
     SAFE_ID(vertex,"VarDec");
-    if (CHECK_ID(vertex->childs[0], "ID")) {
+    if (CHECK_ID(vertex->childs[0], "ID")) {                                                            
         struct Symbol* id = create_symbol(vertex->childs[0]->info, VAR, vertex->childs[0]->lineno);
         struct Type* type = type_inh;
 
@@ -264,7 +276,7 @@ struct Symbol* VarDec(struct Node* vertex, struct Type* type_inh) {
 
 struct Symbol* FunDec(struct Node* vertex, struct Type* type_inh) {  
     SAFE_ID(vertex,"FunDec");                                          
-    struct Symbol* func = search(vertex->childs[0]->info);                         
+    struct Symbol* func = search(vertex->childs[0]->info);                              
     struct Symbol* former = NULL;
     if (func == NULL) { //first appear                      
         func = create_symbol(vertex->childs[0]->info, PROC, vertex->childs[0]->lineno);        
@@ -305,9 +317,7 @@ struct Symbol* FunDec(struct Node* vertex, struct Type* type_inh) {
 }
 
 void VarList(struct Node* vertex, struct Symbol* func, int pos) {
-    SAFE_ID(vertex,"VarList");
-    printf("%s\n",vertex->id);
-    SAFE_ID(vertex,"VarList");                // wrong ????
+    SAFE_ID(vertex,"VarList");               
     if (func->kind != PROC) {
         panic("Unexpected Non process function id");
     }
@@ -326,10 +336,9 @@ struct Symbol* ParamDec(struct Node* vertex) {
     struct Type* type_inh = Specifier(vertex->childs[0]);
 
     return VarDec(vertex->childs[1], type_inh);
-   //return VarDec(vertex, type_inh); 
 }
 
-struct FieldList* DefList(struct Node* vertex) {
+struct FieldList* DefList(struct Node* vertex) {   
     SAFE_ID(vertex,"DefList");
     struct FieldList* fl_syn = NULL;
     if (vertex->childs[0] != NULL) {
@@ -362,7 +371,7 @@ struct FieldList* DecList(struct Node* vertex, struct Type* type_inh) {
     return fl_syn;
 }
 
-struct Symbol* Dec(struct Node* vertex, struct Type* type_inh) {
+struct Symbol* Dec(struct Node* vertex, struct Type* type_inh) {   
     SAFE_ID(vertex,"Dec");
     struct Symbol* var = VarDec(vertex->childs[0], type_inh);
 
@@ -398,7 +407,7 @@ void add(struct Symbol* newItem) {
     if (newItem == NULL)
         panic("Null new item");
 
-    int pos = hash(newItem->id);                    printf("hash pos %d\n",pos);
+    int pos = hash(newItem->id);                    
     struct SymbolTableItem* head = symbol_table[pos];
 
     //insert into the top pos
@@ -502,7 +511,7 @@ bool comp_type(struct Type* ltype, struct Type* rtype) {
 void display_symbol() {
     //  symbol_table[TABLE_SIZE]
     for(int i = 0; i < TABLE_SIZE; i++) {   
-        if(symbol_table[i] != NULL) {                       printf("%d\n",i);    
+        if(symbol_table[i] != NULL) {                       
             struct SymbolTableItem *p = symbol_table[i];
             while(p != NULL) {
                 printf("ID is %s \n",p->id->id);  
