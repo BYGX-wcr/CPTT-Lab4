@@ -198,10 +198,15 @@ void ExtDef(struct Node* vertex) {
         struct Symbol* func = FunDec(vertex->childs[1], type_inh);
 
         if (CHECK_ID(vertex->childs[2], "CompSt") && func != NULL) {
-            func->defined = true;    
+            struct Symbol* former = search_symbol(func->id);
+            if (former->defined == false)
+                func->defined = true;
+            else
+                errorinfo(4, vertex->childs[1]->lineno, "Redefined function");
+
             // function is defined here
             if (!CompSt(vertex->childs[2], type_inh)) {
-                /*non ret val*/
+                /* no return val */
             }
         }
     }
@@ -289,9 +294,10 @@ struct Symbol* VarDec(struct Node* vertex, struct Type* type_inh) {
 }
 
 struct Symbol* FunDec(struct Node* vertex, struct Type* type_inh) {  
-    SAFE_ID(vertex,"FunDec");                                          
+    SAFE_ID(vertex, "FunDec");                                          
     struct Symbol* func = search_symbol(vertex->childs[0]->info);                              
     struct Symbol* former = NULL;
+
     if (func == NULL) { //first appear                
         func = create_symbol(vertex->childs[0]->info, PROC, vertex->childs[0]->lineno);        
     }
