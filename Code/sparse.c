@@ -21,6 +21,7 @@
 #define CHECK_ID(vertex, name) ((vertex != NULL) ? !strcmp(vertex->id, name) : false)
 #define INT_PTR &INT_T
 #define FLOAT_PTR &FLOAT_T
+#define INVALID_TYPE &INVALID_T
 #define SAFE_ID(vertex, name) \
         if (strcmp(vertex->id, name) != 0) \
         {   \
@@ -28,7 +29,7 @@
             panic("Node Unmatched!!"); \
         }
 
-enum MetaType { BASIC, ARRAY, STRUCTURE };  
+enum MetaType { BASIC, ARRAY, STRUCTURE, INVALID };  
 enum SymbolMetaType { VAR, PROC, USER_TYPE };  // var, function, structure
 
 struct Node {
@@ -85,11 +86,12 @@ struct SymbolTableItem {
 
 static struct SymbolTableItem* symbol_table[TABLE_SIZE]; //a hash table
 
+static struct Type INVALID_T = { INVALID }; //initialize the constant type INVALID_TYPE
 static struct Type INT_T = { BASIC, INT }; //initialize the constant type struct of int
 static struct Type FLOAT_T = { BASIC, FLOAT }; //initialize the constant type struct of float
 
 static bool struct_def_flag = false; //set true when defining a struct type
-static bool func_def_flag = false; //set true when defining a function
+static bool func_dec_flag = false; //set true when defining a function
 
 static unsigned int anon_count = 0;
 
@@ -134,15 +136,13 @@ struct FieldList* Args(struct Node* vertex);
 void semantic_parse(struct Node* root) {
     init();
 
+    //output(root);
     if (CHECK_ID(root, "Program"))
         visit(root);
     else
-        panic("Unexpected semantic parsing object!");
+        panic("Invalid program, can not be semantic parsed! May be existing syntax or lexical errors");
 
     final_check();
-
-    display_symbol();
-    //output(root);
 }
 
 void init() {
@@ -150,14 +150,16 @@ void init() {
 }
 
 void final_check() {
+  //  display_symbol();
 
     //check function declarations
     for (int i = 0; i < TABLE_SIZE; ++i) {
         struct SymbolTableItem* ptr = symbol_table[i];
         while (ptr != NULL) {
             struct Symbol* id = ptr->id;
-            if (id->kind == PROC && !id->defined)
+            if (id->kind == PROC && !id->defined) {
                 errorinfo(18, id->first_lineno, "Undefined function");
+            }
 
             ptr = ptr->next;
         }
@@ -178,7 +180,7 @@ void visit(struct Node* vertex) {
         ExtDef(vertex);
     }
     else if (CHECK_ID(vertex, "DefList")) {
-        struct FieldList* var_dec_list;
+        struct FieldList* var_dec_list = NULL;
         DefList(vertex, &var_dec_list);
     }
     else if (CHECK_ID(vertex, "Exp")) {
@@ -206,16 +208,19 @@ void ExtDef(struct Node* vertex) {
     if (CHECK_ID(vertex->childs[1], "ExtDecList")) {
         ExtDecList(vertex->childs[1], type_inh);
     }
-    else if (CHECK_ID(vertex->childs[1], "FunDec")) {           
+    else if (CHECK_ID(vertex->childs[1], "FunDec")) {
+        if (CHECK_ID(vertex->childs[2], "SEMI")) func_dec_flag = true;
         struct Symbol* func = FunDec(vertex->childs[1], type_inh);
+        if (CHECK_ID(vertex->childs[2], "SEMI")) func_dec_flag = false;
 
         if (CHECK_ID(vertex->childs[2], "CompSt") && func != NULL) { 
             struct Symbol* former = search_symbol(func->id);
-            if (former->defined == false)
-                func->defined = true;
+            if (former->defined == false) {
+                former->defined = true;
+            }
             else
                 errorinfo(4, vertex->childs[1]->lineno, "Redefined function");
-            // function is defined here
+
             if (!CompSt(vertex->childs[2], type_inh)) {
                 /* no return val */
             } 
@@ -234,27 +239,46 @@ struct Type* Specifier(struct Node* vertex) {
         return basic_type;
     }
     else {
-        return StructSpecifier(vertex->childs[0]);
+        struct Type* res = StructSpecifier(vertex->childs[0]);
+        if (res == NULL) {
+            return INVALID_TYPE;
+        }
+        else
+        {
+            return res;
+        }
+        
     }
 }
 
 struct Type* StructSpecifier(struct Node* vertex) {
     SAFE_ID(vertex,"StructSpecifier");
 
-    if (CHECK_ID(vertex->childs[1], "Tag")) { //struct def reference
+    if (CHECK_ID(vertex->childs[1], "Tag")) { //struct def reference  
+
         struct Symbol* id = search_symbol(vertex->childs[1]->childs[0]->info);
-        if (id->kind != USER_TYPE)
+        if (id == NULL) {
             errorinfo(17, vertex->childs[1]->lineno, "Undefined struct type");
+            return NULL;
+        }
+        else if (id->kind != USER_TYPE) {
+            errorinfo(17, vertex->childs[1]->lineno, "Undefined struct type");
+        }
 
         struct Type* type = id->type;
         return type;
     }
     else { //struct definition
         struct Symbol* id;
-        if (vertex->childs[1]->childs[0] != NULL) {
+        if (vertex->childs[1]->childs[0] != NULL)
             id = create_symbol(vertex->childs[1]->childs[0]->info, USER_TYPE, vertex->childs[1]->childs[0]->lineno);
         else
-            id = create_symbol(itoa(anon_count++), USER_TYPE, vertex->childs[1]->lineno);
+        {
+            char p[20];
+            sprintf(p, "%d", anon_count++);
+            id = create_symbol(p, USER_TYPE, vertex->childs[1]->lineno);
+        }
+
         struct Type* type = create_type(STRUCTURE);
 
         struct_def_flag = true;
@@ -333,9 +357,7 @@ struct Symbol* FunDec(struct Node* vertex, struct Type* type_inh) {
 
     func->proc_type.ret_type = type_inh;
     if (CHECK_ID(vertex->childs[2], "VarList")) {
-        func_def_flag = true;
         VarList(vertex->childs[2], func, 0);
-        func_def_flag = false;
     }
 
     if (former != NULL) {
@@ -442,7 +464,7 @@ struct Symbol* Dec(struct Node* vertex, struct Type* type_inh) {
 bool CompSt(struct Node* vertex, struct Type* type_inh) {
     SAFE_ID(vertex,"CompSt");
     
-    struct FieldList* var_def_list;
+    struct FieldList* var_def_list = NULL;
     DefList(vertex->childs[1], &var_def_list);  
     return StmtList(vertex->childs[2], type_inh);
 }
@@ -492,17 +514,17 @@ bool Stmt(struct Node* vertex, struct Type* type_inh) {
 struct ExpType Exp(struct Node* vertex) {
     SAFE_ID(vertex, "Exp");
     struct ExpType type_syn;
-    type_syn.type = NULL;
+    type_syn.type = INVALID_TYPE;
     type_syn.lvalue = false;
 
     if (CHECK_ID(vertex->childs[0], "ID") && !CHECK_ID(vertex->childs[1], "LP")) { //Var reference
         struct Symbol* var = search_symbol(vertex->childs[0]->info);
+        type_syn.lvalue = true;
+
         if (var != NULL) {
             type_syn.type = var->type;
-            type_syn.lvalue = true;
         }
         else {
-           // type_syn.lvalue = true;
             errorinfo(1, vertex->childs[0]->lineno, "Use undefined variant");
         }
     }
@@ -633,6 +655,7 @@ struct ExpType Exp(struct Node* vertex) {
     else if (CHECK_ID(vertex->childs[1], "LB")) {
         struct ExpType id_type = Exp(vertex->childs[0]);
         struct ExpType index_type = Exp(vertex->childs[2]);
+        type_syn.lvalue = true;
 
         if (!(index_type.type->kind == BASIC && index_type.type->basic == INT)) {
             errorinfo(12, vertex->childs[2]->lineno, "Use non integer expression as array index");
@@ -642,15 +665,15 @@ struct ExpType Exp(struct Node* vertex) {
             errorinfo(10, vertex->childs[0]->lineno, "The identifier is not an array");
         }
         else {
-            type_syn.lvalue = true;
             type_syn.type = id_type.type->array.elem_type;
         }
     }
     else if (CHECK_ID(vertex->childs[1], "DOT")) {
         struct ExpType id_type = Exp(vertex->childs[0]);
+        type_syn.lvalue = true;
 
         if (id_type.type->kind != STRUCTURE) {
-            errorinfo(13, vertex->childs[0]->lineno, "The identifier is not a struct var");
+            errorinfo(13, vertex->childs[0]->lineno, "The identifier is not a struct variant");
         }
         else {
             struct FieldList* fl = id_type.type->structure;
@@ -659,7 +682,6 @@ struct ExpType Exp(struct Node* vertex) {
             while (fl != NULL) {
                 if (strcmp(fl->id, vertex->childs[2]->info) == 0) {   // is equal
                     flag = true;
-                    type_syn.lvalue = true;
                     type_syn.type = fl->type;
                     break;
                 }
@@ -668,7 +690,7 @@ struct ExpType Exp(struct Node* vertex) {
             }
 
             if (flag == false) {
-                errorinfo(14, vertex->childs[2]->lineno, "Use undefined field of struct var");
+                errorinfo(14, vertex->childs[2]->lineno, "Use undefined field of struct variant");
             }
         }
     }
@@ -691,26 +713,14 @@ struct FieldList* Args(struct Node* vertex) {
 
 /* operations on data structure for semantic parsing */
 
-// hash function used by symbol table
-/*unsigned int hash(char *str) {
-    unsigned int val = 0, i = 0;
-    for(; *str; ++str) {
-        val = (val << 2) + *str;
-        if (i = val & ~TABLE_SIZE) val = (val ^ (i >> 12)) & TABLE_SIZE;
-    }
-    printf("%d\n",val);
-    return val;
-}*/
-
 // BKDR Hash Function used for symbol table
 unsigned int hash(char *str) {
-    // unsigned int val = 5381;
-    // while(*str) {
-    //     val += (val << 5) + (*str++);
-    // }
-    // return ((val & 0x7fffffff)%TABLE_SIZE);
-    return 0;
+    unsigned int val = 5381;
+    while(*str) {
+        val += (val << 5) + (*str++);
+    }
 
+    return ((val & 0x7fffffff) % TABLE_SIZE);
 }
 
 // insert a symbol into the symbol table
@@ -737,8 +747,8 @@ void add_symbol(struct Symbol* newItem) {
 }
 
 // search the symbol in the symbol table, return NULL, if not found
-struct Symbol* search_symbol(char* name) {         
-    int pos = hash(name);                                  
+struct Symbol* search_symbol(char* name) {
+    int pos = hash(name);
     struct SymbolTableItem* head = symbol_table[pos];           
 
     while (head != NULL) {
@@ -754,7 +764,8 @@ struct Symbol* search_symbol(char* name) {
 // create a Symbol structure variant, return NULL, if the symbol exists
 struct Symbol* create_symbol(char* id, int kind, int first_lineno) {
     struct Symbol* temp;
-    if (!struct_def_flag) {
+    bool flag = !(struct_def_flag || (func_dec_flag && kind == VAR)); //judge whether need to alter symbol table
+    if (flag) {
         temp = search_symbol(id);
         if (temp != NULL)
             return NULL;
@@ -768,7 +779,7 @@ struct Symbol* create_symbol(char* id, int kind, int first_lineno) {
     temp->kind = kind;
     temp->first_lineno = first_lineno;
 
-    if (!struct_def_flag)
+    if (flag)
         add_symbol(temp);                   
     return temp;
 }
@@ -800,8 +811,8 @@ void display_symbol() {
         if(symbol_table[i] != NULL) {                       
             struct SymbolTableItem *p = symbol_table[i];
             while(p != NULL) {
-                printf("ID is %s \n",p->id->id);  
-                p = p->next;        
+                printf("%d: ID is %s, kind is %d\n", i, p->id->id, p->id->kind);  
+                p = p->next;
             }
         }
     }
@@ -810,17 +821,16 @@ void display_symbol() {
 // compare two Type structure, return true, if they are equal
 bool comp_type(struct Type* ltype, struct Type* rtype) {   //printf("%d, %d\n",ltype->basic,rtype->basic);
     if ((ltype ==  NULL || rtype == NULL) || ltype->kind != rtype->kind)  // ltype may be NULL 
-    //if(ltype->kind != rtype->kind)
         return false;
 
     if (ltype->kind == BASIC) {
         return ltype->basic == rtype->basic;
     }
-    else if (ltype->kind = ARRAY) {
+    else if (ltype->kind == ARRAY) {
         return comp_type(ltype->array.elem_type, rtype->array.elem_type);
     }
     else {
-        return strcmp(ltype->struct_id, rtype->struct_id);
+        return !strcmp(ltype->struct_id, rtype->struct_id);
     }
 }
 
