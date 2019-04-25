@@ -50,7 +50,10 @@ struct Type {
     union {
         int basic;                      //0-int, 1-float
         struct { struct Type* elem_type; int size; } array;
-        struct FieldList* structure;    //head ptr for FieldList
+        struct {
+            char* struct_id;
+            struct FieldList* structure;    //head ptr for FieldList
+        };
     };
 };
 
@@ -80,12 +83,13 @@ struct SymbolTableItem {
 
 /* global variant definitions */
 
-static struct SymbolTableItem* symbol_table[TABLE_SIZE]; //A hash table
+static struct SymbolTableItem* symbol_table[TABLE_SIZE]; //a hash table
 
 const static struct Type INT_T = { BASIC, INT }; //initialize the constant type struct of int
 const static struct Type FLOAT_T = { BASIC, FLOAT }; //initialize the constant type struct of float
 
 static bool struct_def_flag = false; //set true when defining a struct type
+static bool func_def_flag = false; //set true when defining a function
 
 /* function declarations */
 
@@ -94,7 +98,6 @@ void visit(struct Node* vertex);
 void final_check();
 void panic(char* msg);
 void errorinfo(int type, int lineno, char* description);
-void display_symbol();
 void output(struct Node* root);
 
 void add_symbol(struct Symbol* newItem);
@@ -103,6 +106,8 @@ struct Symbol* create_symbol(char* id, int kind, int first_lineno);
 struct Type* create_type(int kind);
 struct FieldList* create_field(char* id, struct Type* type);
 bool comp_type(struct Type* ltype, struct Type* rtype);
+void display_symbol();
+bool check_fields(char* id, struct FieldList* fl);
 
 void ExtDef(struct Node* vertex);
 struct Type* Specifier(struct Node* vertex);
@@ -114,7 +119,7 @@ struct Symbol* FunDec(struct Node* vertex, struct Type* type_inh);
 struct Symbol* Dec(struct Node* vertex, struct Type* type_inh);
 struct Symbol* ParamDec(struct Node* vertex);
 void VarList(struct Node* vertex, struct Symbol* func, int pos);
-struct FieldList* DefList(struct Node* vertex);
+void DefList(struct Node* vertex, struct FieldList** fl_inh);
 struct FieldList* Def(struct Node* vertex);
 struct FieldList* DecList(struct Node* vertex, struct Type* type_inh);
 
@@ -135,7 +140,7 @@ void semantic_parse(struct Node* root) {
 }
 
 void init() {
-    memset(symbol_table,0,sizeof(struct SymbolTableItem *)*TABLE_SIZE);
+    memset(symbol_table, 0, sizeof(struct SymbolTableItem *)*TABLE_SIZE);
 }
 
 void final_check() {
@@ -166,8 +171,9 @@ void visit(struct Node* vertex) {
     if (CHECK_ID(vertex, "ExtDef")) {       
         ExtDef(vertex);
     }
-    else if (CHECK_ID(vertex, "DefList")) {        
-        DefList(vertex);
+    else if (CHECK_ID(vertex, "DefList")) {
+        struct FieldList* var_dec_list;
+        DefList(vertex, &var_dec_list);
     }
     else if (CHECK_ID(vertex, "Exp")) {
         Exp(vertex);
@@ -229,20 +235,24 @@ struct Type* Specifier(struct Node* vertex) {
 
 struct Type* StructSpecifier(struct Node* vertex) {
     SAFE_ID(vertex,"StructSpecifier");
-    struct_def_flag = true;
 
     if (CHECK_ID(vertex->childs[1], "Tag")) { //struct def reference
         struct Symbol* id = search_symbol(vertex->childs[1]->childs[0]->info);
         if (id->kind != USER_TYPE)
-            errorinfo(17, vertex->childs[1]->lineno, "Invalid struct type");
+            errorinfo(17, vertex->childs[1]->lineno, "Undefined struct type");
 
         struct Type* type = id->type;
         return type;
     }
     else { //struct definition
+        /* TODO: Anonymous struct*/
         struct Symbol* id = create_symbol(vertex->childs[1]->childs[0]->info, USER_TYPE, vertex->childs[1]->childs[0]->lineno);
         struct Type* type = create_type(STRUCTURE);
-        type->structure = DefList(vertex->childs[3]);
+        type->struct_id = id->id;
+
+        struct_def_flag = true;
+        DefList(vertex->childs[3], &type->structure);
+        struct_def_flag = false;
 
         if (id == NULL) {
             errorinfo(16, vertex->childs[1]->lineno, "Redefined struct identifier");
@@ -252,8 +262,6 @@ struct Type* StructSpecifier(struct Node* vertex) {
 
         return type;
     }
-
-    struct_def_flag = false;
 }
 
 void ExtDecList(struct Node* vertex, struct Type* type_inh) {
@@ -272,15 +280,15 @@ struct Symbol* VarDec(struct Node* vertex, struct Type* type_inh) {
         struct Type* type = type_inh;
 
         if (var == NULL) {
-            /*TODO: handle redefined fields*/
             errorinfo(3, vertex->childs[0]->lineno, "Redefined variant");
             //create new symbol for further check
             var = malloc(sizeof(struct Symbol));
+            var->kind = VAR;
             var->id = malloc(strlen(vertex->childs[0]->info) + 1);
             strcpy(var->id, vertex->childs[0]->info);
             var->first_lineno = vertex->childs[0]->lineno;
         }
-        
+
         var->type = type;
 
         return var;
@@ -315,8 +323,10 @@ struct Symbol* FunDec(struct Node* vertex, struct Type* type_inh) {
     }
 
     func->proc_type.ret_type = type_inh;
-    if (CHECK_ID(vertex->childs[2], "VarList")) {      
+    if (CHECK_ID(vertex->childs[2], "VarList")) {
+        func_def_flag = true;
         VarList(vertex->childs[2], func, 0);
+        func_def_flag = false;
     }
 
     if (former != NULL) {
@@ -337,14 +347,14 @@ struct Symbol* FunDec(struct Node* vertex, struct Type* type_inh) {
 }
 
 void VarList(struct Node* vertex, struct Symbol* func, int pos) {
-    SAFE_ID(vertex,"VarList");               
+    SAFE_ID(vertex, "VarList");               
     if (func->kind != PROC) {
         panic("Unexpected Non process function id");
     }
     else if (pos >= MAX_ARGS) {
         panic("Too many arguments for a function");
     }
-                                                                           
+
     func->proc_type.argtype_list[pos] = ParamDec(vertex->childs[0])->type; 
     if (vertex->childs[1] != NULL) {
         VarList(vertex->childs[2], func, pos + 1);
@@ -358,18 +368,32 @@ struct Symbol* ParamDec(struct Node* vertex) {
     return VarDec(vertex->childs[1], type_inh);
 }
 
-struct FieldList* DefList(struct Node* vertex) {   
+void DefList(struct Node* vertex, struct FieldList** fl_inh) {   
     SAFE_ID(vertex,"DefList");
-    struct FieldList* fl_syn = NULL;
     if (vertex->childs[0] != NULL) {
-        fl_syn = Def(vertex->childs[0]);
-        struct FieldList* tail = fl_syn;
-        while (tail->next != NULL) tail = tail->next;
+        struct FieldList* fl_syn = Def(vertex->childs[0]);
+
+        if (*fl_inh == NULL) //set as the head
+            *fl_inh = fl_syn;
+        else { //insert to the tail
+            struct FieldList* tail = *fl_inh;
+            while (tail->next != NULL) {
+                if (struct_def_flag && check_fields(tail->id, fl_syn)) {
+                    errorinfo(15, vertex->childs[0]->lineno, "Redefined field");
+                }
+
+                tail = tail->next;
+            }
+
+            if (struct_def_flag && check_fields(tail->id, fl_syn)) {
+                errorinfo(15, vertex->childs[0]->lineno, "Redefined field");
+            }
+            tail->next = fl_syn;
+        }
 
         //connect sublist to the tail
-        tail->next = DefList(vertex->childs[1]);
+        DefList(vertex->childs[1], fl_inh);
     }
-    return fl_syn;
 }
 
 struct FieldList* Def(struct Node* vertex) {
@@ -410,7 +434,8 @@ struct Symbol* Dec(struct Node* vertex, struct Type* type_inh) {
 bool CompSt(struct Node* vertex, struct Type* type_inh) {
     SAFE_ID(vertex,"CompSt");
     
-    DefList(vertex->childs[1]);
+    struct FieldList* var_def_list;
+    DefList(vertex->childs[1], &var_def_list);
     return StmtList(vertex->childs[2], type_inh);
 }
 
@@ -717,9 +742,12 @@ struct Symbol* search_symbol(char* name) {
 
 // create a Symbol structure variant, return NULL, if the symbol exists
 struct Symbol* create_symbol(char* id, int kind, int first_lineno) {
-    struct Symbol* temp = search_symbol(id);
-    if (temp != NULL)
-        return NULL;
+    struct Symbol* temp;
+    if (!(struct_def_flag || func_def_flag)) {
+        temp = search_symbol(id);
+        if (temp != NULL)
+            return NULL;
+    }
 
     temp = malloc(sizeof(struct Symbol));
     memset(temp, 0, sizeof(struct Symbol));
@@ -729,7 +757,8 @@ struct Symbol* create_symbol(char* id, int kind, int first_lineno) {
     temp->kind = kind;
     temp->first_lineno = first_lineno;
 
-    add_symbol(temp);                   
+    if (!(struct_def_flag || func_def_flag))
+        add_symbol(temp);                   
     return temp;
 }
 
@@ -752,6 +781,19 @@ struct FieldList* create_field(char* id, struct Type* type) {
     temp->type = type;
 
     return temp;
+}
+
+void display_symbol() {
+    // symbol_table[TABLE_SIZE]
+    for(int i = 0; i < TABLE_SIZE; i++) {   
+        if(symbol_table[i] != NULL) {                       
+            struct SymbolTableItem *p = symbol_table[i];
+            while(p != NULL) {
+                printf("ID is %s \n",p->id->id);  
+                p = p->next;        
+            }
+        }
+    }
 }
 
 // compare two Type structure, return true, if they are equal
@@ -783,19 +825,18 @@ bool comp_type(struct Type* ltype, struct Type* rtype) {
     }
 }
 
-void display_symbol() {
-    //  symbol_table[TABLE_SIZE]
-    for(int i = 0; i < TABLE_SIZE; i++) {   
-        if(symbol_table[i] != NULL) {                       
-            struct SymbolTableItem *p = symbol_table[i];
-            while(p != NULL) {
-                printf("ID is %s \n",p->id->id);  
-                p = p->next;        
-            }
+// check whether the id exists in the field list or not, return true if id exists
+bool check_fields(char* id, struct FieldList* head) {
+    while (head != NULL) {
+        if (strcmp(id, head->id)) {
+            return true;
         }
-    }
-}
 
+        head = head->next;
+    }
+
+    return false;
+}
 
 /* operations on syntax tree nodes*/
 
