@@ -247,7 +247,6 @@ struct Type* StructSpecifier(struct Node* vertex) {
         return type;
     }
     else { //struct definition
-        /* TODO: Anonymous struct*/
         struct Symbol* id;
         if (vertex->childs[1]->childs[0] != NULL) {
             id = create_symbol(vertex->childs[1]->childs[0]->info, USER_TYPE, vertex->childs[1]->childs[0]->lineno);
@@ -750,7 +749,7 @@ struct Symbol* search_symbol(char* name) {
 // create a Symbol structure variant, return NULL, if the symbol exists
 struct Symbol* create_symbol(char* id, int kind, int first_lineno) {
     struct Symbol* temp;
-    if (!(struct_def_flag || func_def_flag)) {
+    if (!struct_def_flag) {
         temp = search_symbol(id);
         if (temp != NULL)
             return NULL;
@@ -764,7 +763,7 @@ struct Symbol* create_symbol(char* id, int kind, int first_lineno) {
     temp->kind = kind;
     temp->first_lineno = first_lineno;
 
-    if (!(struct_def_flag || func_def_flag))
+    if (!struct_def_flag)
         add_symbol(temp);                   
     return temp;
 }
