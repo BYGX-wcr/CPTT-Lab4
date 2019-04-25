@@ -91,6 +91,8 @@ static struct Type FLOAT_T = { BASIC, FLOAT }; //initialize the constant type st
 static bool struct_def_flag = false; //set true when defining a struct type
 static bool func_def_flag = false; //set true when defining a function
 
+static unsigned int anon_count = 0;
+
 /* function declarations */
 
 void init();
@@ -248,10 +250,12 @@ struct Type* StructSpecifier(struct Node* vertex) {
         return type;
     }
     else { //struct definition
-        /* TODO: Anonymous struct*/
-        struct Symbol* id = create_symbol(vertex->childs[1]->childs[0]->info, USER_TYPE, vertex->childs[1]->childs[0]->lineno);
+        struct Symbol* id;
+        if (vertex->childs[1]->childs[0] != NULL) {
+            id = create_symbol(vertex->childs[1]->childs[0]->info, USER_TYPE, vertex->childs[1]->childs[0]->lineno);
+        else
+            id = create_symbol(itoa(anon_count++), USER_TYPE, vertex->childs[1]->lineno);
         struct Type* type = create_type(STRUCTURE);
-        type->struct_id = id->id;
 
         struct_def_flag = true;
         DefList(vertex->childs[3], &type->structure);
@@ -260,8 +264,10 @@ struct Type* StructSpecifier(struct Node* vertex) {
         if (id == NULL) {
             errorinfo(16, vertex->childs[1]->lineno, "Redefined struct identifier");
         }
-        else
+        else {
             id->type = type;
+            type->struct_id = id->id;
+        }
 
         return type;
     }
@@ -748,7 +754,7 @@ struct Symbol* search_symbol(char* name) {
 // create a Symbol structure variant, return NULL, if the symbol exists
 struct Symbol* create_symbol(char* id, int kind, int first_lineno) {
     struct Symbol* temp;
-    if (!(struct_def_flag || func_def_flag)) {
+    if (!struct_def_flag) {
         temp = search_symbol(id);
         if (temp != NULL)
             return NULL;
@@ -762,7 +768,7 @@ struct Symbol* create_symbol(char* id, int kind, int first_lineno) {
     temp->kind = kind;
     temp->first_lineno = first_lineno;
 
-    if (!(struct_def_flag || func_def_flag))
+    if (!struct_def_flag)
         add_symbol(temp);                   
     return temp;
 }
@@ -814,20 +820,7 @@ bool comp_type(struct Type* ltype, struct Type* rtype) {   //printf("%d, %d\n",l
         return comp_type(ltype->array.elem_type, rtype->array.elem_type);
     }
     else {
-        struct FieldList* lptr = ltype->structure;
-        struct FieldList* rptr = rtype->structure;
-        while (lptr != NULL && rptr != NULL) { //check each field
-            if (!comp_type(lptr->type, rptr->type)) {
-                return false;
-            }
-
-            lptr = lptr->next;
-            rptr = rptr->next;
-        }
-
-        if (!(lptr == NULL && rptr == NULL)) { //check number of field
-            return false;
-        }
+        return strcmp(ltype->struct_id, rtype->struct_id);
     }
 }
 
