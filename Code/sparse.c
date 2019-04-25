@@ -91,6 +91,8 @@ const static struct Type FLOAT_T = { BASIC, FLOAT }; //initialize the constant t
 static bool struct_def_flag = false; //set true when defining a struct type
 static bool func_def_flag = false; //set true when defining a function
 
+static unsigned int anon_count = 0;
+
 /* function declarations */
 
 void init();
@@ -246,9 +248,12 @@ struct Type* StructSpecifier(struct Node* vertex) {
     }
     else { //struct definition
         /* TODO: Anonymous struct*/
-        struct Symbol* id = create_symbol(vertex->childs[1]->childs[0]->info, USER_TYPE, vertex->childs[1]->childs[0]->lineno);
+        struct Symbol* id;
+        if (vertex->childs[1]->childs[0] != NULL) {
+            id = create_symbol(vertex->childs[1]->childs[0]->info, USER_TYPE, vertex->childs[1]->childs[0]->lineno);
+        else
+            id = create_symbol(itoa(anon_count++), USER_TYPE, vertex->childs[1]->lineno);
         struct Type* type = create_type(STRUCTURE);
-        type->struct_id = id->id;
 
         struct_def_flag = true;
         DefList(vertex->childs[3], &type->structure);
@@ -257,8 +262,10 @@ struct Type* StructSpecifier(struct Node* vertex) {
         if (id == NULL) {
             errorinfo(16, vertex->childs[1]->lineno, "Redefined struct identifier");
         }
-        else
+        else {
             id->type = type;
+            type->struct_id = id->id;
+        }
 
         return type;
     }
@@ -808,20 +815,7 @@ bool comp_type(struct Type* ltype, struct Type* rtype) {
         return (ltype->array.size == rtype->array.size) && comp_type(ltype->array.elem_type, rtype->array.elem_type);
     }
     else {
-        struct FieldList* lptr = ltype->structure;
-        struct FieldList* rptr = rtype->structure;
-        while (lptr != NULL && rptr != NULL) { //check each field
-            if (!comp_type(lptr->type, rptr->type)) {
-                return false;
-            }
-
-            lptr = lptr->next;
-            rptr = rptr->next;
-        }
-
-        if (!(lptr == NULL && rptr == NULL)) { //check number of field
-            return false;
-        }
+        return strcmp(ltype->struct_id, rtype->struct_id);
     }
 }
 
