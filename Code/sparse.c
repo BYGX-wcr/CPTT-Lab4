@@ -248,7 +248,7 @@ struct Type* StructSpecifier(struct Node* vertex) {
     }
     else { //struct definition
         struct Symbol* id;
-        if (vertex->childs[1]->childs[0] != NULL) {
+        if (vertex->childs[1]->childs[0] != NULL)
             id = create_symbol(vertex->childs[1]->childs[0]->info, USER_TYPE, vertex->childs[1]->childs[0]->lineno);
         else
             id = create_symbol(itoa(anon_count++), USER_TYPE, vertex->childs[1]->lineno);
