@@ -462,7 +462,7 @@ struct ExpType Exp(struct Node* vertex) {
     type_syn.type = NULL;
     type_syn.lvalue = false;
 
-    if (CHECK_ID(vertex->childs[0], "ID") && !CHECK_ID(vertex->childs[1], "LP")) {//Var reference
+    if (CHECK_ID(vertex->childs[0], "ID") && !CHECK_ID(vertex->childs[1], "LP")) { //Var reference
         struct Symbol* var = search_symbol(vertex->childs[0]->info);
         if (var != NULL) {
             type_syn.type = var->type;
@@ -623,7 +623,7 @@ struct ExpType Exp(struct Node* vertex) {
 
             bool flag = false;
             while (fl != NULL) {
-                if (strcmp(fl->id, vertex->childs[2]->info)) {
+                if (!strcmp(fl->id, vertex->childs[2]->info)) {   // is equal
                     flag = true;
                     type_syn.lvalue = true;
                     type_syn.type = fl->type;
@@ -763,7 +763,7 @@ bool comp_type(struct Type* ltype, struct Type* rtype) {
         return ltype->basic == rtype->basic;
     }
     else if (ltype->kind = ARRAY) {
-        return (ltype->array.size == rtype->array.size) && comp_type(ltype->array.elem_type, rtype->array.elem_type);
+        return comp_type(ltype->array.elem_type, rtype->array.elem_type);
     }
     else {
         struct FieldList* lptr = ltype->structure;
