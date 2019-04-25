@@ -22,7 +22,7 @@
 #define INT_PTR &INT_T
 #define FLOAT_PTR &FLOAT_T
 #define SAFE_ID(vertex, name) \
-        if (strcmp(vertex->id, name)) \
+        if (strcmp(vertex->id, name) != 0) \
         {   \
             printf("When checking %s:",vertex->id); \
             panic("Node Unmatched!!"); \
@@ -85,8 +85,8 @@ struct SymbolTableItem {
 
 static struct SymbolTableItem* symbol_table[TABLE_SIZE]; //a hash table
 
-const static struct Type INT_T = { BASIC, INT }; //initialize the constant type struct of int
-const static struct Type FLOAT_T = { BASIC, FLOAT }; //initialize the constant type struct of float
+static struct Type INT_T = { BASIC, INT }; //initialize the constant type struct of int
+static struct Type FLOAT_T = { BASIC, FLOAT }; //initialize the constant type struct of float
 
 static bool struct_def_flag = false; //set true when defining a struct type
 static bool func_def_flag = false; //set true when defining a function
@@ -122,6 +122,10 @@ void VarList(struct Node* vertex, struct Symbol* func, int pos);
 void DefList(struct Node* vertex, struct FieldList** fl_inh);
 struct FieldList* Def(struct Node* vertex);
 struct FieldList* DecList(struct Node* vertex, struct Type* type_inh);
+bool CompSt(struct Node* vertex, struct Type* type_inh);
+bool StmtList(struct Node* vertex, struct Type* type_inh);
+bool Stmt(struct Node* vertex, struct Type* type_inh);
+struct FieldList* Args(struct Node* vertex);
 
 /* traverse functions */
 
@@ -203,26 +207,25 @@ void ExtDef(struct Node* vertex) {
     else if (CHECK_ID(vertex->childs[1], "FunDec")) {           
         struct Symbol* func = FunDec(vertex->childs[1], type_inh);
 
-        if (CHECK_ID(vertex->childs[2], "CompSt") && func != NULL) {
+        if (CHECK_ID(vertex->childs[2], "CompSt") && func != NULL) { 
             struct Symbol* former = search_symbol(func->id);
             if (former->defined == false)
                 func->defined = true;
             else
                 errorinfo(4, vertex->childs[1]->lineno, "Redefined function");
-
             // function is defined here
             if (!CompSt(vertex->childs[2], type_inh)) {
                 /* no return val */
-            }
+            } 
         }
     }
 }
 
 struct Type* Specifier(struct Node* vertex) {   
     SAFE_ID(vertex,"Specifier");
-    if (CHECK_ID(vertex->childs[0], "TYPE")) {
+    if (CHECK_ID(vertex->childs[0], "TYPE")) {      
         struct Type* basic_type;
-        if (strcmp(vertex->childs[0]->info, "INT"))
+        if (strcmp(vertex->childs[0]->info, "int") == 0)  // this is "int" defined in .l file 
             basic_type = INT_PTR;
         else
             basic_type = FLOAT_PTR;
@@ -368,9 +371,9 @@ struct Symbol* ParamDec(struct Node* vertex) {
     return VarDec(vertex->childs[1], type_inh);
 }
 
-void DefList(struct Node* vertex, struct FieldList** fl_inh) {   
+void DefList(struct Node* vertex, struct FieldList** fl_inh) {  
     SAFE_ID(vertex,"DefList");
-    if (vertex->childs[0] != NULL) {
+    if (vertex->childs[0] != NULL) {    
         struct FieldList* fl_syn = Def(vertex->childs[0]);
 
         if (*fl_inh == NULL) //set as the head
@@ -396,9 +399,9 @@ void DefList(struct Node* vertex, struct FieldList** fl_inh) {
     }
 }
 
-struct FieldList* Def(struct Node* vertex) {
+struct FieldList* Def(struct Node* vertex) {    
     SAFE_ID(vertex,"Def");
-    struct Type* type_inh = Specifier(vertex->childs[0]);
+    struct Type* type_inh = Specifier(vertex->childs[0]);   
 
     return DecList(vertex->childs[1], type_inh);
 }
@@ -423,11 +426,10 @@ struct Symbol* Dec(struct Node* vertex, struct Type* type_inh) {
         if (struct_def_flag) {
             errorinfo(15, vertex->lineno, "Cannot initialize field when defining struct type");
         }
-        if (comp_type(var->type, Exp(vertex->childs[2]).type)) {
+        if (!comp_type(var->type, Exp(vertex->childs[2]).type)) {
             errorinfo(5, vertex->lineno, "Type of expression is unmatched to the type of variant!");
         }
     }
-
     return var;
 }
 
@@ -435,18 +437,18 @@ bool CompSt(struct Node* vertex, struct Type* type_inh) {
     SAFE_ID(vertex,"CompSt");
     
     struct FieldList* var_def_list;
-    DefList(vertex->childs[1], &var_def_list);
+    DefList(vertex->childs[1], &var_def_list);  
     return StmtList(vertex->childs[2], type_inh);
 }
 
 bool StmtList(struct Node* vertex, struct Type* type_inh) {
-    SAFE_ID(vertex, "StmtList");
+    SAFE_ID(vertex, "StmtList");               
 
     if (vertex->childs[0] == NULL) {
         return false;
     }
-    else {
-        bool flag1 = Stmt(vertex->childs[0], type_inh);
+    else {          
+        bool flag1 = Stmt(vertex->childs[0], type_inh);  
         bool flag2 = StmtList(vertex->childs[1], type_inh);
         return flag1 || flag2;
     }
@@ -454,7 +456,6 @@ bool StmtList(struct Node* vertex, struct Type* type_inh) {
 
 bool Stmt(struct Node* vertex, struct Type* type_inh) {
     SAFE_ID(vertex, "Stmt");
-
     if (CHECK_ID(vertex->childs[0], "RETURN")) {
         if (!comp_type(type_inh, Exp(vertex->childs[1]).type)) {
             errorinfo(8, vertex->childs[0]->lineno, "Return type is unmatched to function definition");
@@ -465,9 +466,10 @@ bool Stmt(struct Node* vertex, struct Type* type_inh) {
         return CompSt(vertex->childs[0], type_inh);
     }
     else if (CHECK_ID(vertex->childs[2], "Exp")) { //common pattern of control flow stmts
+
         if (!comp_type(Exp(vertex->childs[2]).type, INT_PTR)) {
             errorinfo(7, vertex->childs[2]->lineno, "Use non integer expression as judgement condition");
-        }
+        }  
         bool flag = Stmt(vertex->childs[4], type_inh);
 
         if (CHECK_ID(vertex->childs[6], "Stmt")) {
@@ -475,8 +477,8 @@ bool Stmt(struct Node* vertex, struct Type* type_inh) {
         }
         return flag;
     }
-    else {
-        Exp(vertex->childs[0]);
+    else {          
+        Exp(vertex->childs[0]); 
         return false;
     }
 }
@@ -494,6 +496,7 @@ struct ExpType Exp(struct Node* vertex) {
             type_syn.lvalue = true;
         }
         else {
+           // type_syn.lvalue = true;
             errorinfo(1, vertex->childs[0]->lineno, "Use undefined variant");
         }
     }
@@ -503,7 +506,7 @@ struct ExpType Exp(struct Node* vertex) {
     else if (CHECK_ID(vertex->childs[0], "FLOAT")) {
         type_syn.type = FLOAT_PTR;
     }
-    else if (CHECK_ID(vertex->childs[1], "ASSIGNOP")) {
+    else if (CHECK_ID(vertex->childs[1], "ASSIGNOP")) {   
         struct ExpType ltype = Exp(vertex->childs[0]);
         struct ExpType rtype = Exp(vertex->childs[2]);
 
@@ -648,7 +651,7 @@ struct ExpType Exp(struct Node* vertex) {
 
             bool flag = false;
             while (fl != NULL) {
-                if (!strcmp(fl->id, vertex->childs[2]->info)) {   // is equal
+                if (strcmp(fl->id, vertex->childs[2]->info) == 0) {   // is equal
                     flag = true;
                     type_syn.lvalue = true;
                     type_syn.type = fl->type;
@@ -659,7 +662,7 @@ struct ExpType Exp(struct Node* vertex) {
             }
 
             if (flag == false) {
-                errorinfo(14, vertex->childs[2], "Use undefined field of struct var");
+                errorinfo(14, vertex->childs[2]->lineno, "Use undefined field of struct var");
             }
         }
     }
@@ -695,11 +698,13 @@ struct FieldList* Args(struct Node* vertex) {
 
 // BKDR Hash Function used for symbol table
 unsigned int hash(char *str) {
-    unsigned int val = 5381;
-    while(*str) {
-        val += (val << 5) + (*str++);
-    }
-    return ((val & 0x7fffffff)%TABLE_SIZE);
+    // unsigned int val = 5381;
+    // while(*str) {
+    //     val += (val << 5) + (*str++);
+    // }
+    // return ((val & 0x7fffffff)%TABLE_SIZE);
+    return 0;
+
 }
 
 // insert a symbol into the symbol table
@@ -797,8 +802,9 @@ void display_symbol() {
 }
 
 // compare two Type structure, return true, if they are equal
-bool comp_type(struct Type* ltype, struct Type* rtype) {
-    if (ltype->kind != rtype->kind)
+bool comp_type(struct Type* ltype, struct Type* rtype) {   //printf("%d, %d\n",ltype->basic,rtype->basic);
+    if ((ltype ==  NULL || rtype == NULL) || ltype->kind != rtype->kind)  // ltype may be NULL 
+    //if(ltype->kind != rtype->kind)
         return false;
 
     if (ltype->kind == BASIC) {
@@ -828,7 +834,7 @@ bool comp_type(struct Type* ltype, struct Type* rtype) {
 // check whether the id exists in the field list or not, return true if id exists
 bool check_fields(char* id, struct FieldList* head) {
     while (head != NULL) {
-        if (strcmp(id, head->id)) {
+        if (strcmp(id, head->id) == 0) {   // id == head->id return true
             return true;
         }
 
