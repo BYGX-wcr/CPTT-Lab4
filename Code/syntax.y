@@ -2,7 +2,7 @@
     #include <stdio.h>
     #include "lex.yy.c"
 
-    //#define YYERROR_VERBOSE
+    #define YYERROR_VERBOSE
 
     //extern struct Node;
 
