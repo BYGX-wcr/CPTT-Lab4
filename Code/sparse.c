@@ -90,7 +90,7 @@ static struct Type INVALID_T = { INVALID }; //initialize the constant type INVAL
 static struct Type INT_T = { BASIC, INT }; //initialize the constant type struct of int
 static struct Type FLOAT_T = { BASIC, FLOAT }; //initialize the constant type struct of float
 
-static bool struct_def_flag = false; //set true when defining a struct type
+static int struct_def_flag = 0; //set true when defining a struct type
 static bool func_dec_flag = false; //set true when defining a function
 
 static unsigned int anon_count = 0;
@@ -183,7 +183,7 @@ void visit(struct Node* vertex) {
         struct FieldList* var_dec_list = NULL;
         DefList(vertex, &var_dec_list);
     }
-    else if (CHECK_ID(vertex, "Exp")) {
+    else if (CHECK_ID(vertex, "Exp")) {      
         Exp(vertex);
     }
     else {
@@ -281,9 +281,9 @@ struct Type* StructSpecifier(struct Node* vertex) {
 
         struct Type* type = create_type(STRUCTURE);
 
-        struct_def_flag = true;
+        struct_def_flag ++;
         DefList(vertex->childs[3], &type->structure);
-        struct_def_flag = false;
+        struct_def_flag --;
 
         if (id == NULL) {
             errorinfo(16, vertex->childs[1]->lineno, "Redefined struct identifier");
@@ -565,6 +565,9 @@ struct ExpType Exp(struct Node* vertex) {
         if (!comp_type(ltype.type, rtype.type)) {
             errorinfo(7, vertex->childs[1]->lineno, "Types of variants besides the operator are unmatched");
         }
+        if (!(ltype.type->kind == BASIC && rtype.type->kind == BASIC)) {
+            errorinfo(7, vertex->lineno, "Cannot use non basic variants for relational operation");
+        }
         type_syn.type = INT_PTR;
     }
     else if (CHECK_ID(vertex->childs[1], "PLUS") || CHECK_ID(vertex->childs[1], "MINUS") || CHECK_ID(vertex->childs[1], "STAR") || CHECK_ID(vertex->childs[1], "DIV")) {
@@ -764,7 +767,7 @@ struct Symbol* search_symbol(char* name) {
 // create a Symbol structure variant, return NULL, if the symbol exists
 struct Symbol* create_symbol(char* id, int kind, int first_lineno) {
     struct Symbol* temp;
-    bool flag = !(struct_def_flag || (func_dec_flag && kind == VAR)); //judge whether need to alter symbol table
+    bool flag = !((struct_def_flag || func_dec_flag) && kind == VAR); //judge whether need to alter symbol table
     if (flag) {
         temp = search_symbol(id);
         if (temp != NULL)
