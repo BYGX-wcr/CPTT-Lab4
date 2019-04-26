@@ -150,7 +150,7 @@ void init() {
 }
 
 void final_check() {
-  //  display_symbol();
+    //display_symbol();
 
     //check function declarations
     for (int i = 0; i < TABLE_SIZE; ++i) {
