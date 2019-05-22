@@ -25,8 +25,6 @@ static struct Symbol *paralist[ARGNUM]; // paramdec list
 static char *structlist[ARGNUM]; // search Node struct to get offset directly
 int struct_label = 0;
 
-bool able_to_output = true;
-
 enum InterCodeKind { ASSIGN, ADD, SUB, MUL, STAR };
 enum OperandKind { VARIABLE, CONSTANT, ADDRESS };
 struct Operand {
@@ -55,7 +53,7 @@ int get_offset(struct FieldList *p, char *name);
 int offset_structure(char *name); 
 bool in_paralist(char *name);
 int use_addr(struct Node *vertex);
-
+bool legal_to_output();
 
 /* translate function declaration */
 
@@ -86,24 +84,30 @@ void translate_semantic(struct Node *root) {
 
     translate_init();
 
-    translate_visit(root);
-
-    if(able_to_output) {
-        printf("able to output !! \n");
+    if(legal_to_output()) {
+        translate_visit(root);
+        FILE *file = fopen("../result.ir","w");
+        fclose(file);
+        /*
+        #include "stdio.h" 
+int main() {
+	FILE *fp; 
+	char str[128]; 
+	if((fp=fopen("test.txt","r"))==NULL) {
+		printf("cannot open file/n"); exit(1);
+	} 
+	while(!feof(fp)) {
+		if(fgets(str,128,fp)!=NULL)
+		printf("%s",str);
+	}
+	fclose(fp);
+        */
     }
     else {
         printf("Cannot translate: Code contains variables of multi-dimensional array type or parameters of array type. \n");
-    }
-    // struct Symbol *p = search_symbol("mmmm");
-    // if(p != NULL) {
-    //     printf("exists !!\n");
-
-    // Cannot translate: Code contains variables of multi-dimensional array type or
-    //parameters of array type.
-    
+    }    
 }
 void translate_init() {
-    able_to_output = true;
     memset(structlist, 0, sizeof(structlist));
 }
 
@@ -166,12 +170,12 @@ void translate_ParamDec(struct Node *vertex) {
             }
         }
         else if(p->type->kind == ARRAY) {
-           able_to_output = false;
+            panic("impossible param!!\n");
         }
 
     }
     else {
-        able_to_output = false;
+        panic("impossible param2!!\n");
     }
 }
 
@@ -236,13 +240,13 @@ void translate_VarDec(struct Node *vertex) {
         if(p->kind == VAR) {
             struct Type *t = p->type;
             int space = space_create(t);            // dec space for array and structure
-            if((t->kind == ARRAY && t->array.elem_type == BASIC) || t->kind == STRUCTURE) {
+            if((t->kind == ARRAY && t->array.elem_type->kind == BASIC) || t->kind == STRUCTURE) {
                 int space = space_create(t);
                 char *src = new_var(vertex->childs[0]->info);
                 printf("%s %s %d \n", DEC, src, space);
             }
-            else if(t->kind == ARRAY && t->array.elem_type != BASIC) {
-                able_to_output = false;
+            else if(t->kind == ARRAY && t->array.elem_type->kind != BASIC) {
+                panic("impossible vardec !!\n");
             }        
         }
     }
@@ -611,7 +615,7 @@ void translate_Args(struct Node *vertex, char *a[], int type[], int *k) {
 
     struct ExpType p = Exp(vertex->childs[0]);
     if (p.type->kind == ARRAY) {
-        able_to_output = false;
+        panic("impossible !!\n");
     }
     else {
         char *src = new_tmp();
@@ -764,4 +768,47 @@ char *new_num(char *src) {
     dst[0] = '#';
     strcpy(dst+1, src);
     return dst;
+}
+
+bool structure_arrays(struct FieldList *s) {
+    bool flag = true;
+    while (s != NULL) {
+        if(s->type->kind == ARRAY && s->type->array.elem_type->kind != BASIC) {
+            flag = false;
+        }
+        else if(s->type->kind == STRUCTURE) {
+            if(! structure_arrays(s->type->structure)) {
+                flag = false;
+            }
+        }
+        s = s->next;
+    }
+    return flag;
+}
+
+bool legal_to_output() {
+    bool flag = true;
+    for(int i = 0;i < TABLE_SIZE; i++) {
+        struct SymbolTableItem *p = symbol_table[i];
+        while(p != NULL) {
+            struct Symbol *s = p->id;
+            if(s->kind == VAR && s->type->kind == ARRAY && s->type->array.elem_type->kind != BASIC) {  
+                flag = false;
+            }       // high dimensions arrays
+            else if(s->kind == PROC) {  // array in arglist
+                for(int j = 0;j < MAX_ARGS;j++) {
+                    if(s->proc_type.argtype_list[j] != NULL && s->proc_type.argtype_list[j]->kind == ARRAY) {
+                        flag = false;
+                    }
+                }
+            }           
+            else if(s->kind == STRUCTURE) {  // high dimensions array in structure
+                if(! structure_arrays(s->type->structure)) {
+                    flag = false;
+                }
+            }
+            p = p->next;
+        }
+    }
+    return flag;
 }
