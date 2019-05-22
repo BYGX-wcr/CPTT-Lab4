@@ -58,6 +58,7 @@ bool in_paralist(char *name);
 int use_addr(struct Node *vertex);
 bool legal_to_output();
 char *imm_data(int n);
+void add_ch(char *dst, char ch);
 /* translate function declaration */
 
 void translate_semantic(struct Node *root);
@@ -370,9 +371,8 @@ void translate_Exp(struct Node* vertex, char *place) {
         char *dst = new_tmp();
         int left = use_addr(vertex->childs[0]);
         int right = use_addr(vertex->childs[2]);
-        // printf("%d , %d debug \n", left, right);
         translate_Exp(vertex->childs[2],src);
-        translate_Exp(vertex->childs[0],dst);
+        printf("%d , %d debug \n", left, right);
         if(left == VAR) {
             dst = new_var(vertex->childs[0]->childs[0]->info);
             if(right == VAR) {
@@ -385,6 +385,7 @@ void translate_Exp(struct Node* vertex, char *place) {
             }
         }
         else {  
+            translate_Exp(vertex->childs[0],dst);
             if(right == VAR) {
                 printf("*%s := %s \n", dst, src);
                 add_code(OT_DEREF_L, dst, src, NULL, NULL);
@@ -394,9 +395,9 @@ void translate_Exp(struct Node* vertex, char *place) {
                 add_code(OT_DEFRE_B, dst, src, NULL, NULL);
             }
         }
-        // if(place != NULL) {
-        //     printf("%s := %s \n", place, dst);
-        // }
+        if(place != NULL) {
+            printf("%s := %s \n", place, dst);
+        }
     }
     else if (CHECK_ID(vertex->childs[1], "AND") || CHECK_ID(vertex->childs[1], "OR")
             || CHECK_ID(vertex->childs[1], "RELOP") || CHECK_ID(vertex->childs[0], "NOT")) {
@@ -767,6 +768,14 @@ char *imm_data(int n) {
     dst[0] = '#';
     strcpy(dst+1, src);
     return dst;
+}
+
+void add_ch(char *dst, char ch) {
+    char src[ARGNUM];
+    strcpy(src, dst);
+    memset(dst, 0, sizeof(dst));
+    dst[0] = ch;
+    strcpy(dst+1, src);
 }
 
 char *new_var(char *name) {
