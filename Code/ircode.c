@@ -148,88 +148,20 @@ void export_code( FILE* output) {
                 fprintf(output, "%s := %s \n", ptr->left, ptr->right);
                 break;
             }
-            case OT_ADD_REF_L: {
-                fprintf(output, "%s := &%s + %s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
             case OT_ADD: {
                 fprintf(output, "%s := %s + %s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_ADD_R: {
-                fprintf(output, "%s := %s + *%s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_ADD_L: {
-                fprintf(output, "%s := *%s + %s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_ADD_B: {
-                fprintf(output, "%s := *%s + *%s \n", ptr->dst, ptr->left, ptr->right);
                 break;
             }
             case OT_SUB: {
                 fprintf(output, "%s := %s - %s \n", ptr->dst, ptr->left, ptr->right);
                 break;
             }
-            case OT_SUB_R: {
-                fprintf(output, "%s := %s - *%s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_SUB_L: {
-                fprintf(output, "%s := *%s - %s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_SUB_B: {
-                fprintf(output, "%s := *%s - *%s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
             case OT_MUL: {
                 fprintf(output, "%s := %s * %s \n", ptr->dst, ptr->left, ptr->right);
                 break;
             }
-            case OT_MUL_R: {
-                fprintf(output, "%s := %s * *%s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_MUL_L: {
-                fprintf(output, "%s := *%s * %s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_MUL_B: {
-                fprintf(output, "%s := *%s * *%s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
             case OT_DIV: {
                 fprintf(output, "%s := %s / %s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_DIV_R: {
-                fprintf(output, "%s := %s / *%s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_DIV_L: {
-                fprintf(output, "%s := *%s / %s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_DIV_B: {
-                fprintf(output, "%s := *%s / *%s \n", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_REF: {
-                fprintf(output, "%s := &%s \n", ptr->left, ptr->right);
-                break;
-            }
-            case OT_DEREF_R: {
-                fprintf(output, "%s := *%s \n", ptr->left, ptr->right);
-                break;
-            }
-            case OT_DEFRE_B: {
-                fprintf(output, "*%s := *%s \n", ptr->left, ptr->right);
-                break;
-            }
-            case OT_DEREF_L: {
-                fprintf(output, "*%s := %s \n", ptr->left, ptr->right);
                 break;
             }
             case OT_GOTO: {
@@ -243,10 +175,6 @@ void export_code( FILE* output) {
             case OT_RET: {
                 fprintf(output, "RETURN %s \n", ptr->left);
                 break;
-            }
-            case OT_RET_DEFEF: {
-                fprintf(output, "RETURN *%s \n", ptr->left);
-                break;               
             }
             case OT_DEC: {
                 fprintf(output, "DEC %s %s \n", ptr->left, ptr->right);
@@ -274,10 +202,6 @@ void export_code( FILE* output) {
             }
             case OT_WRITE: {
                 fprintf(output, "WRITE %s \n", ptr->left);
-                break;
-            }
-            case OT_WRITE_DEREF: {
-                fprintf(output, "WRITE *%s \n", ptr->left);
                 break;
             }
             default:
