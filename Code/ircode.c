@@ -69,7 +69,7 @@ struct CodeListItem* add_code(enum OPERATOR_TYPE opt, char* left, char* right, c
 //find the item that arg:target points to and remove it
 //return the pointer of next item if the operation is done, otherwise return NULL
 struct CodeListItem* rm_code(struct CodeListItem* target) {
-    if (length == 0 || target == NULL) return;
+    if (length == 0 || target == NULL) return NULL;
 
     struct CodeListItem* ptr = ir_head.next;
     while (ptr->opt != OT_FLAG) {
@@ -128,7 +128,7 @@ struct CodeListItem* next_code(struct CodeListItem* target) {
 }
 
 //export the ir code list to file denoted by arg:output
-void export_code(struct FILE* output) {
+void export_code( FILE* output) {
     if (length == 0) return;
 
     struct CodeListItem* ptr = ir_head.next;

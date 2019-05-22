@@ -20,10 +20,12 @@ const char LABEL[10] = "LABEL";
 const char IF[10] = "IF";
 const char GOTO[10] = "GOTO";
 
-static struct Symbol *paralist[ARGNUM];
+static struct Symbol *paralist[ARGNUM]; // paramdec list
 
-static char *structlist[ARGNUM];
+static char *structlist[ARGNUM]; // search Node struct to get offset directly
 int struct_label = 0;
+
+bool able_to_output = true;
 
 enum InterCodeKind { ASSIGN, ADD, SUB, MUL, STAR };
 enum OperandKind { VARIABLE, CONSTANT, ADDRESS };
@@ -86,15 +88,22 @@ void translate_semantic(struct Node *root) {
 
     translate_visit(root);
 
+    if(able_to_output) {
+        printf("able to output !! \n");
+    }
+    else {
+        printf("Cannot translate: Code contains variables of multi-dimensional array type or parameters of array type. \n");
+    }
     // struct Symbol *p = search_symbol("mmmm");
     // if(p != NULL) {
     //     printf("exists !!\n");
-    
+
     // Cannot translate: Code contains variables of multi-dimensional array type or
     //parameters of array type.
     
 }
 void translate_init() {
+    able_to_output = true;
     memset(structlist, 0, sizeof(structlist));
 }
 
@@ -157,12 +166,12 @@ void translate_ParamDec(struct Node *vertex) {
             }
         }
         else if(p->type->kind == ARRAY) {
-            panic("not for us !!\n");
+           able_to_output = false;
         }
 
     }
     else {
-        panic("paradec is array !!! not for us !!");
+        able_to_output = false;
     }
 }
 
@@ -227,10 +236,13 @@ void translate_VarDec(struct Node *vertex) {
         if(p->kind == VAR) {
             struct Type *t = p->type;
             int space = space_create(t);            // dec space for array and structure
-            if(t->kind == ARRAY || t->kind == STRUCTURE) {
+            if((t->kind == ARRAY && t->array.elem_type == BASIC) || t->kind == STRUCTURE) {
                 int space = space_create(t);
                 char *src = new_var(vertex->childs[0]->info);
                 printf("%s %s %d \n", DEC, src, space);
+            }
+            else if(t->kind == ARRAY && t->array.elem_type != BASIC) {
+                able_to_output = false;
             }        
         }
     }
@@ -599,7 +611,7 @@ void translate_Args(struct Node *vertex, char *a[], int type[], int *k) {
 
     struct ExpType p = Exp(vertex->childs[0]);
     if (p.type->kind == ARRAY) {
-        panic("not for us \n");
+        able_to_output = false;
     }
     else {
         char *src = new_tmp();
