@@ -9,12 +9,16 @@ unsigned int tmp_count = 1;
 unsigned int label_count = 1;
 
 const char ZERO[10] = "#0";
+const char ONE[10] = "#1";
 const char READ[10] = "READ";
 const char WRITE[10] = "WRITE";
 const char CALL[10] = "CALL";
 const char ARG[10] = "ARG";
 const char RETURN[10] = "RETURN";
 const char DEC[10] = "DEC";
+const char LABEL[10] = "LABEL";
+const char IF[10] = "IF";
+const char GOTO[10] = "GOTO";
 
 static struct Symbol *paralist[ARGNUM];
 
@@ -71,6 +75,7 @@ void translate_Exp(struct Node *vertex, char *place);
 void translate_Args(struct Node *vertex, char *a[], int type[], int *k);
 void translate_VarDec(struct Node *vertex);
 void get_structure_offset(struct Node *vertex);
+void translate_Cond(struct Node *vertex, char *label_true, char *label_false);
 /* function defination */
 
 void translate_semantic(struct Node *root) {
@@ -84,7 +89,9 @@ void translate_semantic(struct Node *root) {
     // struct Symbol *p = search_symbol("mmmm");
     // if(p != NULL) {
     //     printf("exists !!\n");
-    // }
+    
+    // Cannot translate: Code contains variables of multi-dimensional array type or
+    //parameters of array type.
     
 }
 void translate_init() {
@@ -257,14 +264,36 @@ void translate_Stmt(struct Node *vertex) {
         translate_CompSt(vertex->childs[0]);
     }
     else if (CHECK_ID(vertex->childs[2], "Exp")) { 
-        if(CHECK_ID(vertex->childs[0], "IF")) { // if
-
-            if (CHECK_ID(vertex->childs[6], "Stmt")) { // if else
-                
-            }
+        if(CHECK_ID(vertex->childs[0], "IF") && !CHECK_ID(vertex->childs[6], "Stmt")) { // if
+            char *label_true = new_label();
+            char *label_false = new_label();
+            translate_Cond(vertex->childs[2], label_true, label_false); // code1
+            printf("%s %s :\n", LABEL, label_true);
+            translate_Stmt(vertex->childs[4]); // code2
+            printf("%s %s :\n", LABEL, label_false);
+        }
+        else if (CHECK_ID(vertex->childs[0], "IF") && CHECK_ID(vertex->childs[6], "Stmt")) { // if else
+                char *label_a = new_label();
+                char *label_b = new_label();
+                char *label_c = new_label();
+                translate_Cond(vertex->childs[2], label_a, label_b);
+                printf("%s %s :\n", LABEL, label_a);
+                translate_Stmt(vertex->childs[4]);
+                printf("%s %s \n", GOTO, label_c);
+                printf("%s %s :\n", LABEL, label_b);
+                translate_Stmt(vertex->childs[6]);
+                printf("%s %s :\n", LABEL, label_c);
         }
         else { // while
-
+            char *label_a = new_label();
+            char *label_b = new_label();
+            char *label_c = new_label();
+            printf("%s %s :\n", LABEL, label_a);
+            translate_Cond(vertex->childs[2], label_b, label_c);
+            printf("%s %s :\n", LABEL, label_b);
+            translate_Stmt(vertex->childs[4]);
+            printf("%s %s \n", GOTO, label_a);
+            printf("%s %s :\n", LABEL, label_c);
         }
             
     }
@@ -335,11 +364,16 @@ void translate_Exp(struct Node* vertex, char *place) {
         //     printf("%s := %s \n", place, dst);
         // }
     }
-    else if (CHECK_ID(vertex->childs[1], "AND") || CHECK_ID(vertex->childs[1], "OR")) {
+    else if (CHECK_ID(vertex->childs[1], "AND") || CHECK_ID(vertex->childs[1], "OR")
+            || CHECK_ID(vertex->childs[1], "RELOP") || CHECK_ID(vertex->childs[0], "NOT")) {
         
-    }
-    else if (CHECK_ID(vertex->childs[1], "RELOP")) {
-
+        char *label_true = new_label();
+        char *label_false = new_label();
+        printf("%s := %s \n", place, ZERO);
+        translate_Cond(vertex, label_true, label_false);
+        printf("%s %s :\n", LABEL, label_true);
+        printf("%s := %s\n", place, ONE);
+        printf("%s %s :\n", LABEL, label_false);
     }
     else if (CHECK_ID(vertex->childs[1], "PLUS")) {
         if(place == NULL) return;
@@ -400,9 +434,6 @@ void translate_Exp(struct Node* vertex, char *place) {
         if(place != NULL) {
             printf("%s := %s \n", place, src);
         }
-    }
-    else if (CHECK_ID(vertex->childs[0], "NOT")) {
-
     }
     else if (CHECK_ID(vertex->childs[0], "ID") && CHECK_ID(vertex->childs[1], "LP")) { //function invoking
         if(CHECK_ID(vertex->childs[2], "Args")) { // ID LP Args RP
@@ -514,6 +545,42 @@ void translate_Exp(struct Node* vertex, char *place) {
         }
     }
 }
+
+void translate_Cond(struct Node *vertex, char *label_true, char *label_false) {
+    if(CHECK_ID(vertex->childs[0], "Exp") && CHECK_ID(vertex->childs[1], "RELOP")){
+        char *t1 = new_tmp();
+        char *t2 = new_tmp();
+        char *op = vertex->childs[1]->info;
+        translate_Exp(vertex->childs[0], t1);
+        translate_Exp(vertex->childs[2], t2);
+        printf("%s %s %s %s %s %s\n", IF, t1, op, t2, GOTO, label_true);
+        printf("%s %s\n", GOTO, label_false);
+
+    }
+    else if(CHECK_ID(vertex->childs[0], "NOT")) {
+        translate_Cond(vertex->childs[1], label_false, label_true);
+    }
+    else if(CHECK_ID(vertex->childs[1], "AND")) {
+        char *label_tmp = new_label();
+        translate_Cond(vertex->childs[0], label_tmp, label_false);
+        printf("%s %s :\n", LABEL, label_tmp);
+        translate_Cond(vertex->childs[2], label_true, label_false);
+    }
+    else if(CHECK_ID(vertex->childs[1], "OR")) {
+        char *label_tmp = new_label();
+        translate_Cond(vertex->childs[0], label_true, label_tmp);
+        printf("%s %s :\n", LABEL, label_tmp);
+        translate_Cond(vertex->childs[2], label_true, label_false);
+    }
+    else {
+        char *t1 = new_tmp();
+        translate_Exp(vertex, t1);
+        char op[10] = "!=";
+        printf("%s %s %s %s %s %s \n", IF, t1, op, ZERO, GOTO, label_true);
+        printf("%s %s \n", GOTO, label_false);
+    }
+}
+
 void get_structure_offset(struct Node *vertex) {
         struct Node *v = vertex->childs[0];
         if(CHECK_ID(v->childs[0], "ID") && !CHECK_ID(v->childs[1], "LP")) {
