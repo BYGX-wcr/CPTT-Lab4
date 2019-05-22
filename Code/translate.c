@@ -85,23 +85,9 @@ void translate_semantic(struct Node *root) {
     translate_init();
 
     if(legal_to_output()) {
-        translate_visit(root);
         FILE *file = fopen("../result.ir","w");
         fclose(file);
-        /*
-        #include "stdio.h" 
-int main() {
-	FILE *fp; 
-	char str[128]; 
-	if((fp=fopen("test.txt","r"))==NULL) {
-		printf("cannot open file/n"); exit(1);
-	} 
-	while(!feof(fp)) {
-		if(fgets(str,128,fp)!=NULL)
-		printf("%s",str);
-	}
-	fclose(fp);
-        */
+        translate_visit(root);
     }
     else {
         printf("Cannot translate: Code contains variables of multi-dimensional array type or parameters of array type. \n");
