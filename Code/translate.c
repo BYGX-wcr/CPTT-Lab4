@@ -275,6 +275,7 @@ void translate_Stmt(struct Node *vertex) {
         }
         else {
             printf("%s *%s \n", RETURN, src);
+
             add_ch(src, '*');
             add_code(OT_RET, src, NULL, NULL, NULL);
         }
@@ -339,9 +340,10 @@ void translate_Exp(struct Node* vertex, char *place) {
         int type = p.type->kind;
         if(type == VAR) {
             char *src = new_var(vertex->childs[0]->info);
-            printf("%s := %s \n", place, src);
-            add_code(OT_ASSIGN, place, src, NULL, NULL);
-
+            //printf("%s := %s \n", place, src);
+            //add_code(OT_ASSIGN, place, src, NULL, NULL);
+            memset(place, 0, sizeof(char)*ARGNUM);
+            strcpy(place, src);
         }
         else {  
             bool flag = in_paralist(vertex->childs[0]->info);
@@ -354,20 +356,21 @@ void translate_Exp(struct Node* vertex, char *place) {
                 printf("%s := &%s \n", place, v1);
                 add_ch(v1, '&');
             }
-            add_code(OT_ASSIGN, place, v1, NULL, NULL);
+            //add_code(OT_ASSIGN, place, v1, NULL, NULL);
+            //place = v1;
+
+            memset(place, 0, sizeof(char)*ARGNUM);
+            strcpy(place, v1);
         }
     }
-    else if (CHECK_ID(vertex->childs[0], "INT")) {
+    else if (CHECK_ID(vertex->childs[0], "INT") || CHECK_ID(vertex->childs[0], "FLOAT")) {
         if(place == NULL) return;
-        char *tmp = new_num(vertex->childs[0]->info);
-        printf("%s := %s \n", place, tmp);
-        add_code(OT_ASSIGN, place, tmp, NULL, NULL);
-    }
-    else if (CHECK_ID(vertex->childs[0], "FLOAT")) {
-        if(place == NULL) return;
-        printf("%s := %s \n", place,vertex->childs[0]->info);
-        add_code(OT_ASSIGN, place, vertex->childs[0]->info, NULL, NULL);
+        char *tmp = new_num(vertex->childs[0]->info);   
+        // printf("%s := %s \n", place, tmp);
+        // add_code(OT_ASSIGN, place, tmp, NULL, NULL);
 
+        memset(place, 0, sizeof(char)*ARGNUM);
+        strcpy(place, tmp);
     }
     else if (CHECK_ID(vertex->childs[1], "ASSIGNOP")) {     
         char *src = new_tmp();
@@ -441,7 +444,7 @@ void translate_Exp(struct Node* vertex, char *place) {
             printf("%s := %s %s *%s \n", place, dst, op, src);
             add_ch(src, '*');
         }
-        else {
+        else {  
             printf("%s := %s %s %s \n", place, dst, op, src);
         }
         if(CHECK_ID(vertex->childs[1], "PLUS")) add_code(OT_ADD, dst, src, place, NULL);
