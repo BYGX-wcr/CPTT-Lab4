@@ -28,9 +28,11 @@ int struct_label = 0;
 
 enum InterCodeKind { ASSIGN, ADD, SUB, MUL, STAR };
 enum OperandKind { VARIABLE, CONSTANT, ADDRESS };
+
 struct Operand {
     enum OperandKind kind;
 };
+
 struct InterCode {
     enum InterCodeKind kind;
     union {
@@ -38,6 +40,7 @@ struct InterCode {
         struct { struct Operand result, opl, opr; }binop;
     }code;
 };
+
 struct InterCodes {
     struct InterCode codes;
     struct InterCodes *next, *prev;
@@ -83,7 +86,6 @@ void translate_Cond(struct Node *vertex, char *label_true, char *label_false);
 /* function defination */
 
 void translate_semantic(struct Node *root) {
-
     SAFE_ID(root, "Program");
 
     translate_init();
@@ -98,6 +100,7 @@ void translate_semantic(struct Node *root) {
         printf("Cannot translate: Code contains variables of multi-dimensional array type or parameters of array type. \n");
     }    
 }
+
 void translate_init() {
     memset(structlist, 0, sizeof(structlist));
 }
@@ -272,8 +275,8 @@ void translate_Stmt(struct Node *vertex) {
         }
         else {
             printf("%s *%s \n", RETURN, src);
-            add_ch(src, '*');
 
+            add_ch(src, '*');
             add_code(OT_RET, src, NULL, NULL, NULL);
         }
     }
@@ -322,7 +325,6 @@ void translate_Stmt(struct Node *vertex) {
             printf("%s %s :\n", LABEL, label_c);
             add_code(OT_LABEL, label_c, NULL, NULL, NULL);
         }
-            
     }
     else { // Exp SEMI
         translate_Exp(vertex->childs[0],NULL);
@@ -775,14 +777,14 @@ char *imm_data(int n) {
 void add_ch(char *dst, char ch) {
     char src[ARGNUM];
     strcpy(src, dst);
-    memset(dst, 0, sizeof(dst));
+    memset(dst, 0, strlen(dst));
     dst[0] = ch;
-    strcpy(dst+1, src);
+    strncpy(dst + 1, src, strlen(src));
 }
 
 char *new_var(char *name) {
     char *dst = (char *)malloc(sizeof(char)*ARGNUM);
-    memset(dst, 0, sizeof(char)*strlen(dst));
+    memset(dst, 0, sizeof(char)*ARGNUM);
     struct Symbol *p = search_symbol(name);
     if (p != NULL && (p->kind == VAR))
     {
@@ -800,30 +802,30 @@ char *new_var(char *name) {
 
 char *new_tmp() {   
     char *dst = (char *)malloc(sizeof(char)*ARGNUM);
-    memset(dst, 0, sizeof(char)*strlen(dst));
+    memset(dst, 0, sizeof(char)*ARGNUM);
     dst[0] = 't';
     char src[10];
     int_to_char(tmp_count++, src);
-    strcpy(dst+1, src);
+    strcpy(dst + 1, src);
     return dst;
 }
 
 char *new_label() {   
     char *dst = (char *)malloc(sizeof(char)*ARGNUM);
-    memset(dst, 0, sizeof(char)*strlen(dst));  
+    memset(dst, 0, sizeof(char)*ARGNUM);  
     char tmp[10] = "label";
     char src[10];
     strcpy(dst,tmp);
     int_to_char(label_count++, src);
-    strcpy(dst+5, src);
+    strcpy(dst + 5, src);
     return dst;
 }
 
 char *new_num(char *src) {
     char *dst = (char *)malloc(sizeof(char)*30);
-    memset(dst, 0, sizeof(char)*strlen(dst));
+    memset(dst, 0, sizeof(char)*30);
     dst[0] = '#';
-    strcpy(dst+1, src);
+    strcpy(dst + 1, src);
     return dst;
 }
 

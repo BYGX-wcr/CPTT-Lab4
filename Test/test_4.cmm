@@ -1,0 +1,31 @@
+struct Operands
+{
+   int o1;
+   int d;
+   struct yy {
+      int m;
+      int n;
+      struct dd{
+         int x;
+         int y;
+         int a[5];
+      }k;
+   }c;
+   int o2;
+};
+int wdy(struct Operands mm, int t2) {
+   return mm.o1 + mm.o2 + t2;
+}
+int test(int h) {
+   return h;
+}
+int main()
+{
+struct Operands p;
+int v2;
+p.o1 = 1;
+p.o2 = 2;
+v2 = wdy(p, p.o2);
+write(v2);
+return 0;
+} 

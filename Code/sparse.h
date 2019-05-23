@@ -83,6 +83,8 @@ struct SymbolTableItem {
     struct SymbolTableItem* next;
 };
 
+/* function declarations */
+
 void init();
 void visit(struct Node* vertex);
 void final_check();
