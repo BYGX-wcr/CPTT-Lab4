@@ -11,8 +11,6 @@ enum OPERATOR_TYPE { // Definitions of intermediate code operators, according to
     OT_SUB,
     OT_MUL,
     OT_DIV,
-    OT_REF,
-    OT_DEREF,
     OT_GOTO,
     OT_RELOP,
     OT_RET,
@@ -42,6 +40,6 @@ struct CodeListItem* rm_code(struct CodeListItem* target);
 struct CodeListItem* replace_code(struct CodeListItem* target, enum OPERATOR_TYPE opt, char* left, char* right, char* dst, char* extra);
 struct CodeListItem* last_code(struct CodeListItem* target);
 struct CodeListItem* next_code(struct CodeListItem* target);
-void export_code(struct FILE* output);
+void export_code(FILE* output);
 
 #endif

@@ -1,0 +1,33 @@
+struct Operands
+{
+   int o1;
+   int d;
+   struct yy {
+      int m;
+      int n;
+      struct dd{
+         int x;
+         int y;
+         int a[5];
+      }k;
+   }c;
+   int o2;
+};
+int wdy(struct Operands h) {
+   int array[5];
+   array[4] = h.d + h.c.m;
+   return array[4];
+}
+int main()
+{
+struct Operands p;
+int t = 0;
+p.d = 1;
+p.c.m = 10; 
+p.c.k.x = read(); 
+p.c.k.a[2] = 5; 
+t = p.c.k.a[2] + p.c.k.x + p.c.m + wdy(p);
+write(t);
+return 0;
+
+} 

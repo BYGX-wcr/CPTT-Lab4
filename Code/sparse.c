@@ -1,135 +1,22 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <memory.h>
-#include <string.h>
-#include <assert.h>
-#include <stdarg.h>
-#include <stdbool.h>
-
-/* type and constant value definitions */
-
-#define LEXICAL_U 1
-#define GRAM_U 0
-#define INT 0
-#define FLOAT 1
-
-#define MAX_CHILDS 8
-#define MAX_ARGS 10
-#define TABLE_SIZE 6
-
-#define NODE_SIZE sizeof(struct Node)
-#define CHECK_ID(vertex, name) ((vertex != NULL) ? !strcmp(vertex->id, name) : false)
-#define INT_PTR &INT_T
-#define FLOAT_PTR &FLOAT_T
-#define INVALID_TYPE &INVALID_T
-#define SAFE_ID(vertex, name) \
-        if (strcmp(vertex->id, name) != 0) \
-        {   \
-            printf("When checking %s:",vertex->id); \
-            panic("Node Unmatched!!"); \
-        }
-
-enum MetaType { BASIC, ARRAY, STRUCTURE, INVALID };  
-enum SymbolMetaType { VAR, PROC, USER_TYPE };  // var, function, structure
-
-struct Node {
-    bool type;                          //[Lexical Unit]:true, [Grammatical Unit]:false
-    char* id;                           //[Lexical Unit]:token, [Grammatical Unit]:non-terminals
-    int lineno;                         //line number
-    char* info;                         //[Lexical Unit]:details, [Grammatical Unit]:undefined
-    struct Node* childs[MAX_CHILDS];    //pointers to child nodes
-};
-
-struct FieldList {                  
-    char* id;                           //name of id
-    struct Type* type;                  //type of id
-    struct FieldList* next;
-};
-
-struct Type {
-    enum MetaType kind;                 //meta type of the Type : BASIC, ARRAY, STRUCTURE
-    union {
-        int basic;                      //0-int, 1-float
-        struct { struct Type* elem_type; int size; } array;
-        struct {
-            char* struct_id;
-            struct FieldList* structure;    //head ptr for FieldList
-        };
-    };
-};
-
-struct ExpType {
-    struct Type* type;                  //type of expression
-    bool lvalue;                        //flag for whether it is lvalue
-};
-
-struct Symbol {
-    char* id;                           //name of the symbol, id in PL
-    enum SymbolMetaType kind;           //meta type of the symbol
-    int first_lineno;                   //lineno where the symbol is declared firstly
-    bool defined;                       //flag for define status of the symbol, only used by functions
-    union {
-        struct Type* type;
-        struct {
-            struct Type* ret_type;      //return type
-            struct Type* argtype_list[MAX_ARGS];    //args_list type
-        } proc_type;                    //type definition for function
-    };
-};
-
-struct SymbolTableItem {
-    struct Symbol* id;                  //the symbol carried by the item
-    struct SymbolTableItem* next;
-};
+#include "sparse.h"
 
 /* global variant definitions */
 
-static struct SymbolTableItem* symbol_table[TABLE_SIZE]; //a hash table
+struct SymbolTableItem* symbol_table[TABLE_SIZE]; //a hash table
 
-static struct Type INVALID_T = { INVALID }; //initialize the constant type INVALID_TYPE
-static struct Type INT_T = { BASIC, INT }; //initialize the constant type struct of int
-static struct Type FLOAT_T = { BASIC, FLOAT }; //initialize the constant type struct of float
+struct Type INVALID_T = { INVALID }; //initialize the constant type INVALID_TYPE
+struct Type INT_T = { BASIC, INT }; //initialize the constant type struct of int
+struct Type FLOAT_T = { BASIC, FLOAT }; //initialize the constant type struct of float
 
-static int struct_def_flag = 0; //set true when defining a struct type
-static bool func_dec_flag = false; //set true when defining a function
+int struct_def_flag = 0; //set true when defining a struct type
+bool func_dec_flag = false; //set true when defining a function
 
-static unsigned int anon_count = 0;
+unsigned int anon_count = 0;
+extern unsigned int var_count;
+
 
 /* function declarations */
 
-void init();
-void visit(struct Node* vertex);
-void final_check();
-void panic(char* msg);
-void errorinfo(int type, int lineno, char* description);
-void output(struct Node* root);
-
-void add_symbol(struct Symbol* newItem);
-struct Symbol* search_symbol(char* name);
-struct Symbol* create_symbol(char* id, int kind, int first_lineno);
-struct Type* create_type(int kind);
-struct FieldList* create_field(char* id, struct Type* type);
-bool comp_type(struct Type* ltype, struct Type* rtype);
-void display_symbol();
-bool check_fields(char* id, struct FieldList* fl);
-
-void ExtDef(struct Node* vertex);
-struct Type* Specifier(struct Node* vertex);
-struct Type* StructSpecifier(struct Node* vertex);
-struct ExpType Exp(struct Node* vertex);
-void ExtDecList(struct Node* vertex, struct Type* type_inh);
-struct Symbol* VarDec(struct Node* vertex, struct Type* type_inh);
-struct Symbol* FunDec(struct Node* vertex, struct Type* type_inh);
-struct Symbol* Dec(struct Node* vertex, struct Type* type_inh);
-struct Symbol* ParamDec(struct Node* vertex);
-void VarList(struct Node* vertex, struct Symbol* func, int pos);
-void DefList(struct Node* vertex, struct FieldList** fl_inh);
-struct FieldList* Def(struct Node* vertex);
-struct FieldList* DecList(struct Node* vertex, struct Type* type_inh);
-bool CompSt(struct Node* vertex, struct Type* type_inh);
-bool StmtList(struct Node* vertex, struct Type* type_inh);
-bool Stmt(struct Node* vertex, struct Type* type_inh);
-struct FieldList* Args(struct Node* vertex);
 
 /* traverse functions */
 
@@ -143,10 +30,33 @@ void semantic_parse(struct Node* root) {
         panic("Invalid program, can not be semantic parsed! May be existing syntax or lexical errors");
 
     final_check();
+
+    // struct Symbol *p = search_symbol("c");
+    // if(p == NULL) {
+    //     printf("null \n");return;
+    // }
+    // struct FieldList *f = p->type->structure;
+    // while(f != NULL) {
+    //     printf("%s lkdfjdkl %d \n", f->id, f->type->kind);
+    //     f = f->next;
+    // }
+    // struct Symbol *m  = search_symbol("p");
+    // printf("%d dkfjd\n", m->type->kind);
 }
 
 void init() {
     memset(symbol_table, 0, sizeof(struct SymbolTableItem *)*TABLE_SIZE);
+    // add function read into symbolTable
+    struct Symbol *r = create_symbol("read",PROC,0);
+    r->defined = true;
+    r->proc_type.ret_type = &INT_T;
+
+    // add function write into symbolTable
+    struct Symbol *w = create_symbol("write",PROC,0);
+    w->defined = true;
+    w->proc_type.ret_type = &INT_T;
+    w->proc_type.argtype_list[0] = &INT_T;
+
 }
 
 void final_check() {
@@ -180,11 +90,11 @@ void visit(struct Node* vertex) {
         ExtDef(vertex);
     }
     else if (CHECK_ID(vertex, "DefList")) {
-        struct FieldList* var_dec_list = NULL;
+        struct FieldList* var_dec_list = NULL;      
         DefList(vertex, &var_dec_list);
     }
     else if (CHECK_ID(vertex, "Exp")) {      
-        Exp(vertex);
+        Exp(vertex);            
     }
     else {
         int ptr = 0;
@@ -270,10 +180,10 @@ struct Type* StructSpecifier(struct Node* vertex) {
     }
     else { //struct definition
         struct Symbol* id;
-        if (vertex->childs[1]->childs[0] != NULL)
+        if (vertex->childs[1]->childs[0] != NULL) {
             id = create_symbol(vertex->childs[1]->childs[0]->info, USER_TYPE, vertex->childs[1]->childs[0]->lineno);
-        else
-        {
+        }
+        else {
             char p[20];
             sprintf(p, "%d", anon_count++);
             id = create_symbol(p, USER_TYPE, vertex->childs[1]->lineno);
@@ -549,7 +459,7 @@ struct ExpType Exp(struct Node* vertex) {
         }
         type_syn.type = ltype.type;
     }
-    else if (CHECK_ID(vertex->childs[0], "AND") || CHECK_ID(vertex->childs[0], "OR")) {
+    else if (CHECK_ID(vertex->childs[1], "AND") || CHECK_ID(vertex->childs[1], "OR")) { 
         struct ExpType ltype = Exp(vertex->childs[0]);
         struct ExpType rtype = Exp(vertex->childs[2]);
 
@@ -596,6 +506,9 @@ struct ExpType Exp(struct Node* vertex) {
             res = ltype.type;
         }
         type_syn.type = res;
+    }
+    else if(CHECK_ID(vertex->childs[0], "LP") && CHECK_ID(vertex->childs[1], "Exp")) {
+        type_syn = Exp(vertex->childs[1]);
     }
     else if (CHECK_ID(vertex->childs[0], "MINUS")) {
         struct ExpType rtype = Exp(vertex->childs[1]);
@@ -747,6 +660,10 @@ void add_symbol(struct Symbol* newItem) {
         temp->next = head;
         symbol_table[pos] = temp;
     }
+
+    if(newItem->kind == VAR || newItem->kind == USER_TYPE) {
+        newItem->var_num = var_count++;
+    }
 }
 
 // search the symbol in the symbol table, return NULL, if not found
@@ -783,7 +700,7 @@ struct Symbol* create_symbol(char* id, int kind, int first_lineno) {
     temp->first_lineno = first_lineno;
 
     if (flag)
-        add_symbol(temp);                   
+        add_symbol(temp);                     
     return temp;
 }
 

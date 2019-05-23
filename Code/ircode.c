@@ -69,7 +69,7 @@ struct CodeListItem* add_code(enum OPERATOR_TYPE opt, char* left, char* right, c
 //find the item that arg:target points to and remove it
 //return the pointer of next item if the operation is done, otherwise return NULL
 struct CodeListItem* rm_code(struct CodeListItem* target) {
-    if (length == 0 || target == NULL) return;
+    if (length == 0 || target == NULL) return NULL;
 
     struct CodeListItem* ptr = ir_head.next;
     while (ptr->opt != OT_FLAG) {
@@ -128,7 +128,7 @@ struct CodeListItem* next_code(struct CodeListItem* target) {
 }
 
 //export the ir code list to file denoted by arg:output
-void export_code(struct FILE* output) {
+void export_code( FILE* output) {
     if (length == 0) return;
 
     struct CodeListItem* ptr = ir_head.next;
@@ -137,75 +137,71 @@ void export_code(struct FILE* output) {
         switch (ptr->opt)
         {
             case OT_LABEL: {
-                fprintf(output, "LABEL %s :", ptr->left);
+                fprintf(output, "LABEL %s : \n", ptr->left);
                 break;
             }
             case OT_FUNC: {
-                fprintf(output, "FUNCTION %s :", ptr->left);
+                fprintf(output, "FUNCTION %s : \n", ptr->left);
                 break;
             }
             case OT_ASSIGN: {
-                fprintf(output, "%s := %s", ptr->left, ptr->right);
+                fprintf(output, "%s := %s \n", ptr->left, ptr->right);
                 break;
             }
             case OT_ADD: {
-                fprintf(output, "%s := %s + %s", ptr->dst, ptr->left, ptr->right);
+                fprintf(output, "%s := %s + %s \n", ptr->dst, ptr->left, ptr->right);
                 break;
             }
             case OT_SUB: {
-                fprintf(output, "%s := %s - %s", ptr->dst, ptr->left, ptr->right);
+                fprintf(output, "%s := %s - %s \n", ptr->dst, ptr->left, ptr->right);
                 break;
             }
             case OT_MUL: {
-                fprintf(output, "%s := %s * %s", ptr->dst, ptr->left, ptr->right);
+                fprintf(output, "%s := %s * %s \n", ptr->dst, ptr->left, ptr->right);
                 break;
             }
             case OT_DIV: {
-                fprintf(output, "%s := %s / %s", ptr->dst, ptr->left, ptr->right);
-                break;
-            }
-            case OT_REF: {
-                fprintf(output, "%s := &%s", ptr->left, ptr->right);
-                break;
-            }
-            case OT_DEREF: {
-                fprintf(output, "%s := *%s", ptr->left, ptr->right);
+                fprintf(output, "%s := %s / %s \n", ptr->dst, ptr->left, ptr->right);
                 break;
             }
             case OT_GOTO: {
-                fprintf(output, "GOTO %s", ptr->left);
+                fprintf(output, "GOTO %s \n", ptr->left);
                 break;
             }
             case OT_RELOP: {
-                fprintf(output, "IF %s %s %s GOTO %s", ptr->left, ptr->extra, ptr->right, ptr->dst);
+                fprintf(output, "IF %s %s %s GOTO %s \n", ptr->left, ptr->extra, ptr->right, ptr->dst);
                 break;
             }
             case OT_RET: {
-                fprintf(output, "RETURN %s", ptr->left);
+                fprintf(output, "RETURN %s \n", ptr->left);
                 break;
             }
             case OT_DEC: {
-                fprintf(output, "DEC %s %s", ptr->left, ptr->right);
+                fprintf(output, "DEC %s %s \n", ptr->left, ptr->right);
                 break;
             }
             case OT_ARG: {
-                fprintf(output, "ARG %s", ptr->left);
+                fprintf(output, "ARG %s \n", ptr->left);
                 break;
             }
+            case_OT_ARG_R: {
+                fprintf(output, "ARG *%s \n", ptr->left);
+                break;              
+            }
             case OT_CALL: {
-                fprintf(output, "%s := CALL %s", ptr->left, ptr->right);
+                fprintf(output, "%s := CALL %s \n", ptr->left, ptr->right);
                 break;
             }
             case OT_PARAM: {
-                fprintf(output, "PARAM %s", ptr->left);
+                fprintf(output, "PARAM %s \n", ptr->left);
                 break;
             }
             case OT_READ: {
-                fprintf(output, "READ %s", ptr->left);
+                fprintf(output, "READ %s \n", ptr->left);
                 break;
             }
             case OT_WRITE: {
-                fprintf(output, "WRITE %s", ptr->left);
+                fprintf(output, "WRITE %s \n", ptr->left);
                 break;
             }
             default:
@@ -215,4 +211,5 @@ void export_code(struct FILE* output) {
 
         ptr = ptr->next;
     }
+    fclose(output);
 }
