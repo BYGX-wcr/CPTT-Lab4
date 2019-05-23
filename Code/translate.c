@@ -508,8 +508,15 @@ void translate_Exp(struct Node* vertex, char *place) {
                         panic("type is not illegal !!\n");
                     }
                 }
-                printf("%s := %s %s \n", place, CALL, vertex->childs[0]->info);
-                add_code(OT_CALL, place, vertex->childs[0]->info, NULL, NULL);
+                if(place != NULL) {
+                    printf("%s := %s %s \n", place, CALL, vertex->childs[0]->info);
+                    add_code(OT_CALL, place, vertex->childs[0]->info, NULL, NULL);
+                }
+                else {
+                    char *t = new_tmp();
+                    printf("%s := %s %s \n", t, CALL, vertex->childs[0]->info);
+                    add_code(OT_CALL, t, vertex->childs[0]->info, NULL, NULL);
+                }
             }
         }
         else { // ID LP RP
@@ -527,6 +534,11 @@ void translate_Exp(struct Node* vertex, char *place) {
                 if(place != NULL) {
                     printf("%s := %s %s \n", place, CALL, vertex->childs[0]->info);
                     add_code(OT_CALL, place, vertex->childs[0]->info, NULL, NULL);
+                }
+                else {
+                    char *t = new_tmp();
+                    printf("%s := %s %s \n", t, CALL, vertex->childs[0]->info);
+                    add_code(OT_CALL, t, vertex->childs[0]->info, NULL, NULL);
                 }
             }
         }
