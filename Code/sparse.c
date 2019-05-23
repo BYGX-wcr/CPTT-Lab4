@@ -14,10 +14,6 @@ bool func_dec_flag = false; //set true when defining a function
 unsigned int anon_count = 0;
 extern unsigned int var_count;
 
-
-/* function declarations */
-
-
 /* traverse functions */
 
 void semantic_parse(struct Node* root) {

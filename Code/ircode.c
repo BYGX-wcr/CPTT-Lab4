@@ -211,5 +211,4 @@ void export_code( FILE* output) {
 
         ptr = ptr->next;
     }
-    fclose(output);
 }
