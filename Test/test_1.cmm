@@ -13,19 +13,26 @@ struct Operands
    }c;
    int o2;
 };
-int wdy(struct Operands mm, int t2) {
-   return mm.o1 + mm.o2 + t2;
-}
-int test(int h) {
-   return h;
+int wdy(struct Operands h) {
+   int array[5];
+   array[4] = h.d + h.c.m;
+   return array[4];
 }
 int main()
 {
 struct Operands p;
-int v2;
-p.o1 = 1;
-p.o2 = 2;
-v2 = wdy(p, p.o2);
-write(v2);
+int t = 0, haha = 1, max = 2;
+p.d = 1;
+p.c.m = 10; 
+p.c.k.x = read(); 
+p.c.k.a[2] = 5; 
+t = p.c.k.a[2] + p.c.k.x + p.c.m + wdy(p);
+if(t > haha) {
+   max = t;
+}
+else {
+   max = haha;
+}
+write(max);
 return 0;
 } 
