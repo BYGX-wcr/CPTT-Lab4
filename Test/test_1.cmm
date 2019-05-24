@@ -21,7 +21,7 @@ int wdy(struct Operands h) {
 int main()
 {
 struct Operands p;
-int t = 0, haha = 1, max = 2;
+int t = 0, haha = 20, max = 2;
 p.d = 1;
 p.c.m = 10; 
 p.c.k.x = read(); 

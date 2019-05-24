@@ -1,84 +1,9 @@
-    else if (CHECK_ID(vertex->childs[1], "DOT")) {     
-        int offset = 0;
-        struct Node *v = vertex->childs[0];
-        if(CHECK_ID(v->childs[0], "ID") && !CHECK_ID(v->childs[1], "LP")) {
-
-            char *name = v->childs[0]->info;
-            structlist[struct_label ++] = name;
-            structlist[struct_label ++] = vertex->childs[2]->info;
-            printf("name is %s \n", name);
-            char *t1 = new_tmp();
-            struct Symbol *p = search_symbol(name);
-            struct FieldList *s = p->type->structure;
-            translate_Exp(vertex->childs[0], t1);
-            if (p->kind == VAR && p->type->kind == STRUCTURE) {
-                offset = get_offset(s, vertex->childs[2]->info);
-                if(offset != 0) {
-                    printf("%s := %s + #%d \n", place, t1, offset);
-                }
-                else {
-                    printf("%s := %s \n", place, t1);
-                }
-           }
-           else {
-               panic("only for structure !!");
-               /* 每层通过传地址的方式从上一层获取地址，直到上一层的是ＩＤ为止 */
-           }
-        }
-        else {  
-            translate_Exp(vertex->childs[0], place);
-            char *id_name = vertex->childs[2]->info;
-            int type = VAR;
-            offset = offset_structure(id_name, &type);
-
-        }
-
-    }    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    else if (CHECK_ID(vertex->childs[1], "DOT")) {     
-        int offset = 0;
-        struct Node *v = vertex->childs[0];
-        if(CHECK_ID(v->childs[0], "ID") && !CHECK_ID(v->childs[1], "LP")) {
-            char *name = v->childs[0]->info;
-            printf("name is %s \n", name);
-            char *v1 = new_var(name);
-            bool flag = in_paralist(name);
-            struct Symbol *p = search_symbol(name);
-            struct FieldList *s = p->type->structure;
-            if (p->kind == VAR && p->type->kind == STRUCTURE) {
-                offset = offset_structure(s, vertex->childs[2]->info);
-            // printf("flag is %d\n", flag);
-                if(!flag) {
-                    char tmp[ARGNUM];
-                    tmp[0] = '&';
-                    strcpy(tmp+1, v1);
-                    strcpy(v1, tmp);
-                } 
-                if(offset != 0) {
-                    printf("%s := %s + #%d \n", place, v1, offset);
-                }
-                else {
-                    printf("%s := %s \n", place, v1);
-                }
-           }
-           else {
-               panic("only for structure !!");
-               /* 每层通过传地址的方式从上一层获取地址，直到上一层的是ＩＤ为止 */
-           }
-        }
-        else {  
-            panic("TODO structure in structure !!");
-        }
-
-    }
+int main()
+{
+int n;
+n = read();
+if (n > 0) write(1);
+else if (n < 0) write (-1);
+else write(0);
+return 0;
+}

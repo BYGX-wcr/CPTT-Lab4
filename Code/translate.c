@@ -46,9 +46,8 @@ struct InterCodes {
     struct InterCodes *next, *prev;
 };
 
-
-
 /* functions */
+
 int space_create(struct Type *t);
 void int_to_char(int num, char* dst); 
 char *new_var(char *name);
@@ -60,8 +59,9 @@ int total_offset(char *name);
 bool in_paralist(char *name);
 int use_addr(struct Node *vertex);
 bool legal_to_output();
-char *imm_data(int n);
+char *num2imm(int n);
 void add_ch(char *dst, char ch);
+
 /* translate function declaration */
 
 void translate_semantic(struct Node *root);
@@ -83,7 +83,8 @@ void translate_Args(struct Node *vertex, char *a[], int type[], int *k);
 void translate_VarDec(struct Node *vertex);
 void get_structlist(struct Node *vertex);
 void translate_Cond(struct Node *vertex, char *label_true, char *label_false);
-/* function defination */
+
+/* function definition */
 
 void translate_semantic(struct Node *root) {
     SAFE_ID(root, "Program");
@@ -365,7 +366,7 @@ void translate_Exp(struct Node* vertex, char *place) {
     }
     else if (CHECK_ID(vertex->childs[0], "INT") || CHECK_ID(vertex->childs[0], "FLOAT")) {
         if(place == NULL) return;
-        char *tmp = new_num(vertex->childs[0]->info);   
+        char *tmp = new_imm(vertex->childs[0]->info);   
         // printf("%s := %s \n", place, tmp);
         // add_code(OT_ASSIGN, place, tmp, NULL, NULL);
 
@@ -478,7 +479,7 @@ void translate_Exp(struct Node* vertex, char *place) {
                 int type = use_addr(vertex->childs[2]->childs[0]);
                 if(type != VAR) {
                     printf("%s *%s \n", WRITE, a[0]);
-                    char *tmp = imm_data(0);
+                    char *tmp = num2imm(0);
                     strcpy(tmp, a[0]);
                     add_ch(tmp, '*');
                     add_code(OT_WRITE, tmp, NULL, NULL, NULL);
@@ -497,7 +498,7 @@ void translate_Exp(struct Node* vertex, char *place) {
                     }
                     else if(argtype[2*i] == VAR && argtype[2*i+1] != VAR) {
                         printf("%s *%s \n", ARG, a[i]);
-                        char *tmp = imm_data(0);
+                        char *tmp = num2imm(0);
                         strcpy(tmp, a[0]);
                         add_ch(tmp, '*');
                         add_code(OT_ARG, tmp, NULL, NULL, NULL);
@@ -563,7 +564,7 @@ void translate_Exp(struct Node* vertex, char *place) {
             add_ch(t3, '*');
             add_code(OT_ASSIGN, t1, t3, NULL, NULL);
         }
-        char *num = imm_data(4);
+        char *num = num2imm(4);
         printf("%s := %s * #%d \n", t2, t1, 4);
         add_code(OT_MUL, t1, num, t2, NULL);
 
@@ -597,7 +598,8 @@ void translate_Exp(struct Node* vertex, char *place) {
         char *first = structlist[0];
         char *v1 = new_var(first); 
         int offset = total_offset(vertex->childs[2]->info);         // get offset
-        char *num = imm_data(offset);
+        char *num = num2imm(offset);
+      
         if(in_paralist(first)) {
             printf("%s := %s + #%d \n", place, v1, offset);
             add_code(OT_ADD, v1, num, place, NULL);
@@ -719,7 +721,6 @@ int part_offset(struct FieldList *p, char *name) {
         }
         p = p->next;
     }
-    // printf("ｇｅｔ off set %d \n", offset);
     return offset;
 }
 
@@ -763,21 +764,22 @@ int space_create(struct Type *t) {
 
 void int_to_char(int num, char *dst) {
     int m = num, n = 0, k = 0;
-    while (m != 0)
+    do
     {
         n = m % 10;
         dst[k++] = n + '0';
         m = m / 10;
-    }
-    dst[k] = '\0'; 
-    for(int i = 0, j = k-1;i <= j;i++, j--) {
+    } while (m != 0);
+    dst[k] = '\0';
+
+    for(int i = 0, j = k-1; i <= j; i++, j--) {
         char tmp = dst[i];
         dst[i] = dst[j];
         dst[j] = tmp;
     }
 }
 
-char *imm_data(int n) {
+char *num2imm(int n) {
     char *dst = (char *)malloc(sizeof(char)*ARGNUM);
     char src[ARGNUM];
     int_to_char(n, src);
@@ -833,9 +835,9 @@ char *new_label() {
     return dst;
 }
 
-char *new_num(char *src) {
-    char *dst = (char *)malloc(sizeof(char)*30);
-    memset(dst, 0, sizeof(char)*30);
+char *new_imm(char *src) {
+    char *dst = (char *)malloc(sizeof(char)*ARGNUM);
+    memset(dst, 0, sizeof(char)*ARGNUM);
     dst[0] = '#';
     strcpy(dst + 1, src);
     return dst;
