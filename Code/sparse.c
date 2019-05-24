@@ -19,25 +19,12 @@ extern unsigned int var_count;
 void semantic_parse(struct Node* root) {
     init();
 
-    //output(root);
     if (CHECK_ID(root, "Program"))
         visit(root);
     else
         panic("Invalid program, can not be semantic parsed! May be existing syntax or lexical errors");
 
     final_check();
-
-    // struct Symbol *p = search_symbol("c");
-    // if(p == NULL) {
-    //     printf("null \n");return;
-    // }
-    // struct FieldList *f = p->type->structure;
-    // while(f != NULL) {
-    //     printf("%s lkdfjdkl %d \n", f->id, f->type->kind);
-    //     f = f->next;
-    // }
-    // struct Symbol *m  = search_symbol("p");
-    // printf("%d dkfjd\n", m->type->kind);
 }
 
 void init() {
@@ -45,13 +32,13 @@ void init() {
     // add function read into symbolTable
     struct Symbol *r = create_symbol("read",PROC,0);
     r->defined = true;
-    r->proc_type.ret_type = &INT_T;
+    r->proc_type.ret_type = INT_PTR;
 
     // add function write into symbolTable
     struct Symbol *w = create_symbol("write",PROC,0);
     w->defined = true;
-    w->proc_type.ret_type = &INT_T;
-    w->proc_type.argtype_list[0] = &INT_T;
+    w->proc_type.ret_type = INT_PTR;
+    w->proc_type.argtype_list[0] = INT_PTR;
 
 }
 
@@ -735,7 +722,7 @@ void display_symbol() {
 }
 
 // compare two Type structure, return true, if they are equal
-bool comp_type(struct Type* ltype, struct Type* rtype) {   //printf("%d, %d\n",ltype->basic,rtype->basic);
+bool comp_type(struct Type* ltype, struct Type* rtype) {
     if ((ltype ==  NULL || rtype == NULL) || ltype->kind != rtype->kind)  // ltype may be NULL 
         return false;
 
@@ -745,7 +732,7 @@ bool comp_type(struct Type* ltype, struct Type* rtype) {   //printf("%d, %d\n",l
     else if (ltype->kind == ARRAY) {
         return comp_type(ltype->array.elem_type, rtype->array.elem_type);
     }
-    else {
+    else if (ltype->kind == STRUCTURE) {
         return !strcmp(ltype->struct_id, rtype->struct_id);
     }
 }
