@@ -127,6 +127,14 @@ struct CodeListItem* next_code(struct CodeListItem* target) {
     }
 }
 
+//get the final item of ir code list
+//return NULL if length = 0, otherwise return the ptr of final item
+struct CodeListItem* end_code() {
+    if (length == 0) return NULL;
+
+    return ir_head.last;
+}
+
 //export the ir code list to file denoted by arg:output
 void export_code( FILE* output) {
     if (length == 0) return;

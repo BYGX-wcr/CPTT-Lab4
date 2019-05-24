@@ -288,10 +288,10 @@ void translate_Stmt(struct Node *vertex) {
         if(CHECK_ID(vertex->childs[0], "IF") && !CHECK_ID(vertex->childs[6], "Stmt")) { // if
             char *label_true = new_label();
             char *label_false = new_label();
-            translate_Cond(vertex->childs[2], label_true, label_false); // code1
+            translate_Cond(vertex->childs[2], label_true, label_false); // code of cond exp
             printf("%s %s :\n", LABEL, label_true);
             add_code(OT_LABEL, label_true, NULL, NULL, NULL);
-            translate_Stmt(vertex->childs[4]); // code2
+            translate_Stmt(vertex->childs[4]); // code of true
             printf("%s %s :\n", LABEL, label_false);
             add_code(OT_LABEL, label_false, NULL, NULL, NULL);
         }
@@ -299,15 +299,31 @@ void translate_Stmt(struct Node *vertex) {
                 char *label_a = new_label();
                 char *label_b = new_label();
                 char *label_c = new_label();
-                translate_Cond(vertex->childs[2], label_a, label_b);
-                printf("%s %s :\n", LABEL, label_a);
-                add_code(OT_LABEL, label_a, NULL, NULL, NULL);
-                translate_Stmt(vertex->childs[4]);
+                // translate_Cond(vertex->childs[2], label_a, label_b);
+                // printf("%s %s :\n", LABEL, label_a);
+                // add_code(OT_LABEL, label_a, NULL, NULL, NULL);
+                // translate_Stmt(vertex->childs[4]);
+                // printf("%s %s \n", GOTO, label_c);
+                // add_code(OT_GOTO, label_c, NULL, NULL, NULL);
+                // printf("%s %s :\n", LABEL, label_b);
+                // add_code(OT_LABEL, label_b, NULL, NULL, NULL);
+                // translate_Stmt(vertex->childs[6]);
+                // printf("%s %s :\n", LABEL, label_c);
+                // add_code(OT_LABEL, label_c, NULL, NULL, NULL);
+
+                translate_Cond(vertex->childs[2], label_a, label_b); // code of cond exp
+                /* optimized:reduce GOTO stmt */
+                struct CodeListItem* goto_b = end_code();
+                assert(rm_code(goto_b) != NULL);
+
+                translate_Stmt(vertex->childs[6]); // code of false
                 printf("%s %s \n", GOTO, label_c);
                 add_code(OT_GOTO, label_c, NULL, NULL, NULL);
-                printf("%s %s :\n", LABEL, label_b);
-                add_code(OT_LABEL, label_b, NULL, NULL, NULL);
-                translate_Stmt(vertex->childs[6]);
+
+                printf("%s %s :\n", LABEL, label_a);
+                add_code(OT_LABEL, label_a, NULL, NULL, NULL);
+                translate_Stmt(vertex->childs[4]); // code of true
+
                 printf("%s %s :\n", LABEL, label_c);
                 add_code(OT_LABEL, label_c, NULL, NULL, NULL);
         }
