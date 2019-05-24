@@ -53,9 +53,9 @@ void int_to_char(int num, char* dst);
 char *new_var(char *name);
 char *new_tmp();
 char *new_label();
-char *new_imm(char *src);
-int get_offset(struct FieldList *p, char *name);
-int offset_structure(char *name);
+char *new_num(char *src);
+int part_offset(struct FieldList *p, char *name);
+int total_offset(char *name); 
 bool in_paralist(char *name);
 int use_addr(struct Node *vertex);
 bool legal_to_output();
@@ -81,7 +81,7 @@ void translate_ParamDec(struct Node *vertex);
 void translate_Exp(struct Node *vertex, char *place);
 void translate_Args(struct Node *vertex, char *a[], int type[], int *k);
 void translate_VarDec(struct Node *vertex);
-void get_structure_offset(struct Node *vertex);
+void get_structlist(struct Node *vertex);
 void translate_Cond(struct Node *vertex, char *label_true, char *label_false);
 
 /* function definition */
@@ -380,7 +380,7 @@ void translate_Exp(struct Node* vertex, char *place) {
         int right = use_addr(vertex->childs[2]);
         translate_Exp(vertex->childs[2],src);
         if(left == VAR) {
-            dst = new_var(vertex->childs[0]->childs[0]->info);
+            dst = new_var(vertex->childs[0]->childs[0]->info);     
             if(right == VAR) {
                 printf("%s := %s \n", dst, src);              
             }
@@ -511,8 +511,15 @@ void translate_Exp(struct Node* vertex, char *place) {
                         panic("type is not illegal !!\n");
                     }
                 }
-                printf("%s := %s %s \n", place, CALL, vertex->childs[0]->info);
-                add_code(OT_CALL, place, vertex->childs[0]->info, NULL, NULL);
+                if(place != NULL) {
+                    printf("%s := %s %s \n", place, CALL, vertex->childs[0]->info);
+                    add_code(OT_CALL, place, vertex->childs[0]->info, NULL, NULL);
+                }
+                else {
+                    char *t = new_tmp();
+                    printf("%s := %s %s \n", t, CALL, vertex->childs[0]->info);
+                    add_code(OT_CALL, t, vertex->childs[0]->info, NULL, NULL);
+                }
             }
         }
         else { // ID LP RP
@@ -530,6 +537,11 @@ void translate_Exp(struct Node* vertex, char *place) {
                 if(place != NULL) {
                     printf("%s := %s %s \n", place, CALL, vertex->childs[0]->info);
                     add_code(OT_CALL, place, vertex->childs[0]->info, NULL, NULL);
+                }
+                else {
+                    char *t = new_tmp();
+                    printf("%s := %s %s \n", t, CALL, vertex->childs[0]->info);
+                    add_code(OT_CALL, t, vertex->childs[0]->info, NULL, NULL);
                 }
             }
         }
@@ -582,11 +594,12 @@ void translate_Exp(struct Node* vertex, char *place) {
 
     }
     else if (CHECK_ID(vertex->childs[1], "DOT")) {     
-        get_structure_offset(vertex);
+        get_structlist(vertex);
         char *first = structlist[0];
         char *v1 = new_var(first); 
-        int offset = offset_structure(vertex->childs[2]->info);         // get offset
+        int offset = total_offset(vertex->childs[2]->info);         // get offset
         char *num = num2imm(offset);
+      
         if(in_paralist(first)) {
             printf("%s := %s + #%d \n", place, v1, offset);
             add_code(OT_ADD, v1, num, place, NULL);
@@ -640,7 +653,7 @@ void translate_Cond(struct Node *vertex, char *label_true, char *label_false) {
     }
 }
 
-void get_structure_offset(struct Node *vertex) {
+void get_structlist(struct Node *vertex) {
         struct Node *v = vertex->childs[0];
         if(CHECK_ID(v->childs[0], "ID") && !CHECK_ID(v->childs[1], "LP")) {
 
@@ -649,7 +662,7 @@ void get_structure_offset(struct Node *vertex) {
             structlist[struct_label ++] = vertex->childs[2]->info;
         }
         else {  
-            get_structure_offset(vertex->childs[0]);
+            get_structlist(vertex->childs[0]);
             char *id_name = vertex->childs[2]->info;
             structlist[struct_label ++] = id_name;
         }
@@ -693,7 +706,7 @@ bool in_paralist(char *name) {
     return flag;
 }
 
-int get_offset(struct FieldList *p, char *name) {
+int part_offset(struct FieldList *p, char *name) {
     int offset = 0;
     while (p != NULL && strcmp(name, p->id) != 0) { 
         if (p->type->kind == BASIC) {
@@ -704,14 +717,14 @@ int get_offset(struct FieldList *p, char *name) {
         }
         else {
             struct FieldList *m = p->type->structure;
-            offset += get_offset(m, name);
+            offset += part_offset(m, name);
         }
         p = p->next;
     }
     return offset;
 }
 
-int offset_structure(char *name) {
+int total_offset(char *name) {
     int offset = 0;
     // for(int i = 0;i < struct_label;i++) {
     //     printf("***** %s \n", structlist[i]);
@@ -720,14 +733,14 @@ int offset_structure(char *name) {
     struct FieldList *q = p;
     for(int i = 0;i < struct_label - 2;i++) {
         char *tmp = structlist[i+1];        
-        offset += get_offset(p, tmp);
+        offset += part_offset(p, tmp);
         while(q != NULL && strcmp(q->id, tmp) != 0) {
             q = q->next;
         }
         p = q->type->structure;
         q = p;
     }
-    offset += get_offset(p, name);
+    offset += part_offset(p, name);
     memset(structlist, 0, sizeof(structlist));          // initialized to zero
     struct_label = 0;
     return offset;
