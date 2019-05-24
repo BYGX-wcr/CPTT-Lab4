@@ -385,7 +385,14 @@ void translate_Exp(struct Node* vertex, char *place) {
         int right = use_addr(vertex->childs[2]);
         translate_Exp(vertex->childs[2], src);
         if(left == VAR) {
-            dst = new_var(vertex->childs[0]->childs[0]->info);     
+            translate_Exp(vertex->childs[0], dst);
+            if (place != NULL && vertex->childs[0] != NULL && (CHECK_ID(vertex->childs[0]->childs[0], "ID"))) {
+                //printf("cur: %s\n", place);
+                //printf("target: %s\n", new_var(vertex->childs[0]->childs[0]->info));
+                strcpy(place, new_var(vertex->childs[0]->childs[0]->info));
+                //printf("after: %s\n", place);
+            }
+
             if(right == VAR) {
                 //printf("%s := %s \n", dst, src);              
             }
@@ -394,7 +401,7 @@ void translate_Exp(struct Node* vertex, char *place) {
                 add_ch(src, '*');
             }
         }
-        else {  
+        else {
             translate_Exp(vertex->childs[0], dst);
             if(right == VAR) {
                 //printf("*%s := %s \n", dst, src);
@@ -407,7 +414,7 @@ void translate_Exp(struct Node* vertex, char *place) {
             }
         }
         add_code(OT_ASSIGN, dst, src, NULL, NULL);
-        if(place != NULL) {
+        if(place != NULL && strcmp(place, dst)) {
             add_code(OT_ASSIGN, place, dst, NULL, NULL);
         }
     }
@@ -665,12 +672,16 @@ void translate_Args(struct Node *vertex, char *a[], int type[], int *k) {
 }
 
 int use_addr(struct Node *vertex) {
-    if(CHECK_ID(vertex->childs[0], "Exp") && CHECK_ID(vertex->childs[1], "DOT")) {
+    if (CHECK_ID(vertex->childs[0], "LP")) {
+        return use_addr(vertex->childs[1]);
+    }
+    if (CHECK_ID(vertex->childs[0], "Exp") && CHECK_ID(vertex->childs[1], "DOT")) {
         return STRUCTURE;
     }
-    else if(CHECK_ID(vertex->childs[0], "Exp") && CHECK_ID(vertex->childs[1], "LB")) {
+    else if (CHECK_ID(vertex->childs[0], "Exp") && CHECK_ID(vertex->childs[1], "LB")) {
         return ARRAY;
     }
+     
     return VAR;
 }
 
