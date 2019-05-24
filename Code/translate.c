@@ -53,7 +53,7 @@ void int_to_char(int num, char* dst);
 char *new_var(char *name);
 char *new_tmp();
 char *new_label();
-char *new_num(char *src);
+char *new_imm(char *src);
 int part_offset(struct FieldList *p, char *name);
 int total_offset(char *name); 
 bool in_paralist(char *name);
@@ -445,7 +445,7 @@ void translate_Exp(struct Node* vertex, char *place) {
             printf("%s := %s %s *%s \n", place, dst, op, src);
             add_ch(src, '*');
         }
-        else {  
+        else {
             printf("%s := %s %s %s \n", place, dst, op, src);
         }
         if(CHECK_ID(vertex->childs[1], "PLUS")) add_code(OT_ADD, dst, src, place, NULL);
