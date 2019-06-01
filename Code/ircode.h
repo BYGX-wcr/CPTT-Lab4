@@ -40,7 +40,11 @@ struct CodeListItem* rm_code(struct CodeListItem* target);
 struct CodeListItem* replace_code(struct CodeListItem* target, enum OPERATOR_TYPE opt, char* left, char* right, char* dst, char* extra);
 struct CodeListItem* last_code(struct CodeListItem* target);
 struct CodeListItem* next_code(struct CodeListItem* target);
+struct CodeListItem* begin_code();
 struct CodeListItem* end_code();
+int code_num();
 void export_code(FILE* output);
+
+extern struct CodeListItem ir_head;
 
 #endif

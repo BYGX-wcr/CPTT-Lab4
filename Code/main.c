@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "ircode.h"
 
 extern struct Node;
 extern FILE* yyin;
@@ -22,7 +23,9 @@ int main(int argc, char** argv) {
     yylineno = 1;
     yyrestart(yyin);
     yyparse();
-    semantic_parse(syntax_tree); 
-    translate_semantic(syntax_tree); 
+    semantic_parse(syntax_tree);
+    translate_semantic(syntax_tree);
+    if (argc > 2)
+        assemble(argv[0]);
     return 0;
 }

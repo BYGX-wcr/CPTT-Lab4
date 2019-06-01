@@ -92,10 +92,7 @@ void translate_semantic(struct Node *root) {
     translate_init();
 
     if(legal_to_output()) {
-        FILE *file = fopen("../result.ir","w");
         translate_visit(root);
-        export_code(file);
-        fclose(file);
     }
     else {
         printf("Cannot translate: Code contains variables of multi-dimensional array type or parameters of array type. \n");

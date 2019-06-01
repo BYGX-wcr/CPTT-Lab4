@@ -17,7 +17,7 @@ extern unsigned int var_count;
 /* traverse functions */
 
 void semantic_parse(struct Node* root) {
-    init();
+    sparse_init();
 
     if (CHECK_ID(root, "Program"))
         visit(root);
@@ -27,7 +27,7 @@ void semantic_parse(struct Node* root) {
     final_check();
 }
 
-void init() {
+void sparse_init() {
     memset(symbol_table, 0, sizeof(struct SymbolTableItem *)*TABLE_SIZE);
     // add function read into symbolTable
     struct Symbol *r = create_symbol("read",PROC,0);
