@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include "ircode.h"
+#include "assemble.h"
+#include "sparse.h"
 
-extern struct Node;
 extern FILE* yyin;
 extern int yylineno;
 extern struct Node* syntax_tree;
 
 extern int yyrestart();
 extern int yyparse();
-extern void semantic_parse(struct Node* root);
 extern void translate_semantic(struct Node *root);
 
 // main function for flex

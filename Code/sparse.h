@@ -85,7 +85,8 @@ struct SymbolTableItem {
 
 /* function declarations */
 
-void init();
+void semantic_parse(struct Node* root);
+void sparse_init();
 void visit(struct Node* vertex);
 void final_check();
 void panic(char* msg);

@@ -1,6 +1,8 @@
 #ifndef IRCODE_H
 #define IRCODE_H
 
+#include <stdio.h>
+
 #define CODE_LIST_ITEM_SIZE sizeof(struct CodeListItem)
 
 enum OPERATOR_TYPE { // Definitions of intermediate code operators, according to table 1 in project3.pdf
@@ -44,6 +46,7 @@ struct CodeListItem* begin_code();
 struct CodeListItem* end_code();
 int code_num();
 void export_code(FILE* output);
+void copy_str(char** dst, const char* src);
 
 extern struct CodeListItem ir_head;
 

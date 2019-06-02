@@ -1,34 +1,18 @@
 #include "ircode.h"
 #include "sparse.h"
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <memory.h>
-
-#define ENSURE_REG true
-#define ALLOCATE_REG false
-#define REG_NUM 32
+#include "assemble.h"
 
 /* Definitions of global variants*/
 
-static struct FILE* ass_fp = NULL; //file pointer of assemble output
+static FILE* ass_fp = NULL; //file pointer of assemble output
 static bool* codeblock_array = NULL; //block-split flags array of ir code list
-static const struct MIPSRegs {
-    //named by usage
-    char* zero;
-    char* at;
-    char* v[2];
-    char* a[4];
-    char* t[10];
-    char* s[8];
-    char* k[2];
-    char* gp;
-    char* sp;
-    char* fp;
-    char* ra;
-} reg_set = { "$0", "$1", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$t8",
-              "$t9", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra" };
-static bool reg_flags[REG_NUM];
+
+static const union MIPSRegs reg_set = //description of MIPS32 register set
+{ "$0", "$1", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$t8",
+  "$t9", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra" };
+
+static struct VarDesc var_list = { "HEAD", NULL, NULL, 0, NULL }; //the linked list of variant description
+static struct VarDesc* reg_desc[REG_NUM]; //the array of occupation info of regs
 
 /* Assemble Functions */
 
@@ -39,28 +23,57 @@ void assemble(char* filename) {
 
     int block_begin = 0;
     int block_end = 0;
+    int block_len = 0;
     int code_end = code_num();
     struct CodeListItem* block_ptr = begin_code();
     while (block_end != code_end) {
         block_end = block_begin + 1;
+        block_len = block_end - block_begin;
         while (block_end < code_end && codeblock_array[block_end] != true) block_end++;
 
         //preprocess for the basic block
         struct CodeListItem* ptr = block_ptr;
         for (int i = block_begin; i < block_end; ++i) {
             //resolve data structure
+            if (ptr->opt != OT_LABEL && ptr->opt != OT_GOTO) {
+                if (strlen(ptr->right) != 0) {
+                    struct VarDesc* var = search_var(ptr->right);
+                    if (var == NULL) {
+                        //create VarDesc for var
+                        var = create_var(ptr->right, block_len);
+                    }
+                    assert(var->used);
+                    var->used[i] = true;
+                }
+
+                if (strlen(ptr->left) != 0) {
+                    struct VarDesc* var = search_var(ptr->left);
+                    if (var == NULL) {
+                        //create VarDesc for var
+                        var = create_var(ptr->left, block_len);
+                    }
+                    assert(var->used);
+                    var->used[i] = true;
+                }
+            }
+
+            ptr = next_code(ptr);
         }
 
         //handle the basic block
         ptr = block_ptr;
         for (int i = block_begin; i < block_end; ++i) {
             //transform code
-            instr_transform(ptr, output);
+            assert(ptr);
+            instr_transform(ptr, i, ass_fp);
+
+            ptr = next_code(ptr);
         }
 
         //postprocess for the basic block
         block_ptr = ptr;
         block_begin = block_end;
+        /* TODO: clear regs and var_list */
     }
 
     //clean
@@ -126,7 +139,7 @@ void split_blocks() {
 }
 
 //transform an intermediate instruction to an assemble instruction
-void instr_transform(struct CodeListItem* ptr, struct FILE* output) {
+void instr_transform(struct CodeListItem* ptr, int pos, FILE* output) {
     switch (ptr->opt)
     {
         case OT_LABEL: {
@@ -138,13 +151,13 @@ void instr_transform(struct CodeListItem* ptr, struct FILE* output) {
             break;
         }
         case OT_ASSIGN: {
-            char* reg_x = get_reg(ptr->left, ALLOCATE_REG, output);
+            int reg_x = get_reg(ptr->left, pos, ALLOCATE_REG, output);
             if (is_imm(ptr->right)) {
-                fprintf(output, "  li %s, %s \n", reg_x, ptr->right);
+                fprintf(output, "  li %s, %s \n", reg_set.reg[reg_x], ptr->right);
             }
             else {
-                char* reg_y = get_reg(ptr->right, ENSURE_REG, output);
-                fprintf(output, "  move %s, %s \n", reg_x, reg_y);
+                int reg_y = get_reg(ptr->right, pos, ENSURE_REG, output);
+                fprintf(output, "  move %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y]);
             }
             break;
         }
@@ -215,28 +228,122 @@ void instr_transform(struct CodeListItem* ptr, struct FILE* output) {
 
 //allocate an register for arg:var, arg:flag denotes the used method
 //return the string of allocated register
-char* get_reg(char* var, bool flag, struct FILE* output) {
-    char* res = NULL;
+int get_reg(char* var, int pos, bool flag, FILE* output) {
+    int res = -1;
     if (flag == ENSURE_REG) {
         //corresponding to ensure(var)
-        if ((res = search_in_reg(var)) == NULL) {
-            res = get_reg(var, ALLOCATE_REG, output);
-            fprintf(output, "lw %s, %s\n", res, var);
+        if ((res = search_in_reg(var)) == -1) {
+            res = get_reg(var, pos, ALLOCATE_REG, output);
+            fprintf(output, "lw %s, %s\n", reg_set.reg[res], var);
         }
     }
     else {
         //corresponding to allocate(var)
-        if ((res = search_empty_reg()) == NULL) {
-            res = search_best_reg();
+        if ((res = search_empty_reg()) == -1) {
+            res = search_best_reg(pos);
             spill_reg(res, output);
         }
     }
     return res;
 }
 
+//search an empty register
+//return the index of empty register if found, otherwise -1
+int search_empty_reg() {
+    for (int i = 2; i < 26; ++i) {
+        if (reg_desc[i] == NULL) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+//search the register arg:id existing in
+//return the index of target register if found, otherwise -1
+int search_in_reg(char* id) {
+    for (int i = 2; i < 26; ++i) {
+        if (reg_desc[i] != NULL && strcmp(reg_desc[i]->id, id) == 0) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+//search the best register in the context of arg:pos
+//return the index of best register
+int search_best_reg(int pos) {
+    int max = -1;
+    int maxReg = -1;
+    for (int i = 2; i < 26; ++i) {
+        if (reg_desc[i] == NULL) {
+            return i;
+        }
+        else if (reg_desc[i] != NULL) {
+            int offset = 0x7fffffff;
+            for (int j = reg_desc[i]->block_len - 1; j >= 0; --j) {
+                if (reg_desc[i]->used[j] && pos <= j) {
+                    offset = j - pos;
+                    break;
+                }
+                else if (pos > j) {
+                    break;
+                }
+            }
+            
+            if (offset > max) {
+                max = offset;
+                maxReg = i;
+            }
+        }
+    }
+
+    assert(maxReg != -1);
+    return maxReg;
+}
+
 //reset the flags array of registers
 void clear_regs() {
-    memset(reg_flags, 0, REG_NUM);
+    /* TODO: spill regs */
+    memset(reg_desc, 0, REG_NUM * sizeof(struct VarDesc*));
+}
+
+//spill the value in register into memory
+void spill_reg(int index, FILE* output) {
+    //
+}
+
+/* Operations on VarDesc list*/
+
+struct VarDesc* search_var(char* id) {
+    struct VarDesc* ptr = var_list.next;
+    while (ptr != NULL) {
+        if (strcmp(ptr->id, id) == 0) {
+            return ptr;
+        }
+
+        ptr = ptr->next;
+    }
+
+    return ptr;
+}
+
+struct VarDesc* create_var(char* id, int block_len) {
+    struct VarDesc* ptr = &var_list;
+    while (ptr->next != NULL) {
+        ptr = ptr->next;
+    }
+
+    struct VarDesc* new_var = malloc(sizeof(struct VarDesc));
+    copy_str(&new_var->id, id);
+    new_var->reg = NULL;
+    new_var->used = malloc(block_len);
+    memset(new_var->used, 0, block_len);
+    new_var->next = NULL;
+    ptr->next = new_var;
+
+    return new_var;
 }
 
 /* Tool functions */
