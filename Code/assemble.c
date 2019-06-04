@@ -247,16 +247,45 @@ int get_reg(char* var, int pos, bool flag, FILE* output) {
     int res = -1;
     if (flag == ENSURE_REG) {
         //corresponding to ensure(var)
-        if ((res = search_in_reg(var)) == -1) {
-            res = get_reg(var, pos, ALLOCATE_REG, output);
-            fprintf(output, "lw %s, %s\n", reg_set.reg[res], var);
+        if (var[0] == '*') {// require dereference
+            /* TODO: to be confirmed */
+            var++;
+            if ((res = search_in_reg(var)) == -1) {
+                res = get_reg(var, pos, ALLOCATE_REG, output);
+                fprintf(output, "lw %s, %s \n", reg_set.reg[res], var);
+                reg_desc[res] = search_var(var);
+            }
+
+            //allocate a temporary reg
+            int temp = -1;
+            if ((temp = search_empty_reg()) == -1) {
+                temp = search_best_reg(pos);
+                spill_reg(temp, output);
+            }
+            fprintf(output, "lw %s, 0(%s) \n", reg_set.reg[temp], reg_set.reg[res]);
+            res = temp;
+        }
+        else if (var[0] == '&') {// require reference
+            /* TODO: to be finished */
+        }
+        else {// normal
+            if ((res = search_in_reg(var)) == -1) {
+                res = get_reg(var, pos, ALLOCATE_REG, output);
+                fprintf(output, "lw %s, %s \n", reg_set.reg[res], var);
+                reg_desc[res] = search_var(var);
+            }
         }
     }
     else {
         //corresponding to allocate(var)
-        if ((res = search_empty_reg()) == -1) {
-            res = search_best_reg(pos);
-            spill_reg(res, output);
+        if (var[0] == '*') {// require dereference
+            /* TODO: to be finished */
+        }
+        else {// normal
+            if ((res = search_empty_reg()) == -1) {
+                res = search_best_reg(pos);
+                spill_reg(res, output);
+            }
         }
     }
     return res;
@@ -265,7 +294,7 @@ int get_reg(char* var, int pos, bool flag, FILE* output) {
 //search an empty register
 //return the index of empty register if found, otherwise -1
 int search_empty_reg() {
-    for (int i = 2; i < 26; ++i) {
+    for (int i = AVA_REG; i < AVA_REG + AVA_REG_NUM; ++i) {
         if (reg_desc[i] == NULL) {
             return i;
         }
@@ -277,7 +306,7 @@ int search_empty_reg() {
 //search the register arg:id existing in
 //return the index of target register if found, otherwise -1
 int search_in_reg(char* id) {
-    for (int i = 2; i < 26; ++i) {
+    for (int i = AVA_REG; i < AVA_REG + AVA_REG_NUM; ++i) {
         if (reg_desc[i] != NULL && strcmp(reg_desc[i]->id, id) == 0) {
             return i;
         }
@@ -291,7 +320,7 @@ int search_in_reg(char* id) {
 int search_best_reg(int pos) {
     int max = -1;
     int maxReg = -1;
-    for (int i = 2; i < 26; ++i) {
+    for (int i = AVA_REG; i < AVA_REG + AVA_REG_NUM; ++i) {
         if (reg_desc[i] == NULL) {
             return i;
         }

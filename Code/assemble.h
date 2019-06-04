@@ -8,7 +8,18 @@
 
 #define ENSURE_REG true
 #define ALLOCATE_REG false
+
 #define REG_NUM 32
+#define REG_V 2
+#define REG_V_NUM 2
+#define REG_A 4
+#define REG_A_NUM 4
+#define REG_T 8
+#define REG_T_NUM 10
+#define REG_S 18
+#define REG_S_NUM 8
+#define AVA_REG 8
+#define AVA_REG_NUM 18
 
 union MIPSRegs { /* !!! the order of regs has been tuned */
     struct {
