@@ -43,6 +43,7 @@ struct VarDesc {
     char* reg;
     bool* used;
     int block_len;
+    int mem_offset;
     struct VarDesc* next;
 };
 
@@ -59,7 +60,7 @@ void clear_regs();
 void spill_reg(int index, FILE* output);
 
 struct VarDesc* search_var(char* id);
-struct VarDesc* create_var(char* id, int block_len);
+struct VarDesc* create_var(char* id, int block_len, int mem_offset);
 
 bool is_imm(char* operand);
 

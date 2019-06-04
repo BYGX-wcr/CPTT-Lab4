@@ -373,7 +373,7 @@ struct VarDesc* search_var(char* id) {
     return ptr;
 }
 
-struct VarDesc* create_var(char* id, int block_len) {
+struct VarDesc* create_var(char* id, int block_len, int mem_offset) {
     struct VarDesc* ptr = &var_list;
     while (ptr->next != NULL) {
         ptr = ptr->next;
@@ -384,6 +384,8 @@ struct VarDesc* create_var(char* id, int block_len) {
     new_var->reg = NULL;
     new_var->used = malloc(block_len);
     memset(new_var->used, 0, block_len);
+    new_var->block_len = block_len;
+    new_var->mem_offset = mem_offset;
     new_var->next = NULL;
     ptr->next = new_var;
 
