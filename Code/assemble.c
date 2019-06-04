@@ -132,6 +132,10 @@ void split_blocks() {
         else if ((ptr->opt == OT_RELOP || ptr->opt == OT_GOTO) && counter + 1 < len) {
             codeblock_array[counter + 1] = true;
         }
+        else if (ptr->opt == OT_CALL) {
+            codeblock_array[counter] = true;
+            if (counter + 1 < len) codeblock_array[counter + 1] = true;
+        }
 
         ptr = next_code(ptr);
         counter++;
@@ -179,11 +183,26 @@ void instr_transform(struct CodeListItem* ptr, int pos, FILE* output) {
             break;
         }
         case OT_GOTO: {
-            fprintf(output, "  GOTO %s \n", ptr->left);
+            fprintf(output, "  j %s \n", ptr->left);
             break;
         }
         case OT_RELOP: {
-            fprintf(output, "  IF %s %s %s GOTO %s \n", ptr->left, ptr->extra, ptr->right, ptr->dst);
+            int reg_x = get_reg(ptr->left, pos, ALLOCATE_REG, output);
+            int reg_y = get_reg(ptr->right, pos, ALLOCATE_REG, output);
+            if (strcmp(ptr->extra, "==") == 0)
+                fprintf(output, "  beq %s, %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y], ptr->dst);
+            else if (strcmp(ptr->extra, "!=") == 0)
+                fprintf(output, "  bne %s, %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y], ptr->dst);
+            else if (strcmp(ptr->extra, ">") == 0)
+                fprintf(output, "  bgt %s, %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y], ptr->dst);
+            else if (strcmp(ptr->extra, "<") == 0)
+                fprintf(output, "  blt %s, %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y], ptr->dst);
+            else if (strcmp(ptr->extra, ">=") == 0)
+                fprintf(output, "  bge %s, %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y], ptr->dst);
+            else if (strcmp(ptr->extra, "<=") == 0)
+                fprintf(output, "  ble %s, %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y], ptr->dst);
+            else
+                assert(0);
             break;
         }
         case OT_RET: {
@@ -198,18 +217,14 @@ void instr_transform(struct CodeListItem* ptr, int pos, FILE* output) {
             fprintf(output, "  ARG %s \n", ptr->left);
             break;
         }
-        case_OT_ARG_R: {
-            fprintf(output, "ARG *%s \n", ptr->left);
-            break;              
-        }
         case OT_CALL: {
             fprintf(output, "%s := CALL %s \n", ptr->left, ptr->right);
             break;
         }
-        case OT_PARAM: {
-            fprintf(output, "PARAM %s \n", ptr->left);
-            break;
-        }
+        // case OT_PARAM: {
+        //     fprintf(output, "PARAM %s \n", ptr->left);
+        //     break;
+        // }
         case OT_READ: {
             fprintf(output, "READ %s \n", ptr->left);
             break;
