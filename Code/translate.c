@@ -26,26 +26,6 @@ static struct Symbol *paralist[ARGNUM]; // paramdec list
 static char *structlist[ARGNUM]; // search Node struct to get offset directly
 int struct_label = 0;
 
-enum InterCodeKind { ASSIGN, ADD, SUB, MUL, STAR };
-enum OperandKind { VARIABLE, CONSTANT, ADDRESS };
-
-struct Operand {
-    enum OperandKind kind;
-};
-
-struct InterCode {
-    enum InterCodeKind kind;
-    union {
-        struct { struct Operand right, left; }assign;
-        struct { struct Operand result, opl, opr; }binop;
-    }code;
-};
-
-struct InterCodes {
-    struct InterCode codes;
-    struct InterCodes *next, *prev;
-};
-
 /* functions */
 
 int space_create(struct Type *t);
