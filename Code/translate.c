@@ -64,7 +64,7 @@ void add_ch(char *dst, char ch);
 
 /* translate function declaration */
 
-void translate_semantic(struct Node *root);
+void translate_semantic(struct Node *root, char *filename);
 void translate_init();
 void translate_visit(struct Node *vertex);
 void translate_ExtDef(struct Node *vertex);
@@ -86,13 +86,16 @@ void translate_Cond(struct Node *vertex, char *label_true, char *label_false);
 
 /* function definition */
 
-void translate_semantic(struct Node *root) {
+void translate_semantic(struct Node *root, char *filename) {
     SAFE_ID(root, "Program");
 
     translate_init();
 
     if(legal_to_output()) {
+        FILE *file = fopen(filename,"w");
         translate_visit(root);
+        export_code(file);
+        fclose(file);
     }
     else {
         printf("Cannot translate: Code contains variables of multi-dimensional array type or parameters of array type. \n");
@@ -501,7 +504,7 @@ void translate_Exp(struct Node* vertex, char *place) {
                     }
                     else if(argtype[2*i] == VAR && argtype[2*i+1] != VAR) {
                         char *tmp = num2imm(0);
-                        strcpy(tmp, a[0]);
+                        strcpy(tmp, a[i]);
                         add_ch(tmp, '*');
                         add_code(OT_ARG, tmp, NULL, NULL, NULL);
                     }
@@ -607,6 +610,12 @@ void translate_Cond(struct Node *vertex, char *label_true, char *label_false) {
         char *op = vertex->childs[1]->info;
         translate_Exp(vertex->childs[0], t1);
         translate_Exp(vertex->childs[2], t2);
+        if(use_addr(vertex->childs[0])) {           // element in array or structure
+            add_ch(t1, '*');
+        }
+        if(use_addr(vertex->childs[2])) {
+            add_ch(t2, '*');
+        }
         add_code(OT_RELOP, t1, t2, label_true, op);
         add_code(OT_GOTO, label_false, NULL, NULL, NULL);
 
@@ -629,6 +638,9 @@ void translate_Cond(struct Node *vertex, char *label_true, char *label_false) {
     else {
         char *t1 = new_tmp();
         translate_Exp(vertex, t1);
+        if(use_addr(vertex)) {
+            add_ch(t1, '*');
+        }
         char op[10] = "!=";
         add_code(OT_RELOP, t1, ZERO, label_true, op);
         add_code(OT_GOTO, label_false, NULL, NULL, NULL);
