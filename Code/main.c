@@ -26,6 +26,6 @@ int main(int argc, char** argv) {
     semantic_parse(syntax_tree);
     translate_semantic(syntax_tree);
     if (argc > 2)
-        assemble(argv[0]);
+        assemble(argv[2]);
     return 0;
 }
