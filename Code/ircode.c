@@ -9,7 +9,7 @@
 
 /* Definitions of global data structure */
 
-struct CodeListItem ir_head = { NULL, OT_FLAG, NULL, NULL, NULL, NULL, NULL }; //The head Node of intermediate code list
+static struct CodeListItem ir_head = { NULL, OT_FLAG, NULL, NULL, NULL, NULL, NULL }; //The head Node of intermediate code list
 static unsigned length = 0; //Length of ir code list led by ir_head
 
 /* Assistant tool functions in local file */
@@ -127,25 +127,12 @@ struct CodeListItem* next_code(struct CodeListItem* target) {
     }
 }
 
-//get the start item of ir code list
-//return NULL if length = 0, otherwise return the ptr of the start item
-struct CodeListItem* begin_code() {
-    if (length == 0) return NULL;
-
-    return ir_head.next;
-}
-
 //get the final item of ir code list
 //return NULL if length = 0, otherwise return the ptr of final item
 struct CodeListItem* end_code() {
     if (length == 0) return NULL;
 
     return ir_head.last;
-}
-
-//get the length of ir code list
-int code_num() {
-    return length;
 }
 
 //export the ir code list to file denoted by arg:output
@@ -204,10 +191,6 @@ void export_code( FILE* output) {
             case OT_ARG: {
                 fprintf(output, "ARG %s \n", ptr->left);
                 break;
-            }
-            case_OT_ARG_R: {
-                fprintf(output, "ARG *%s \n", ptr->left);
-                break;              
             }
             case OT_CALL: {
                 fprintf(output, "%s := CALL %s \n", ptr->left, ptr->right);
