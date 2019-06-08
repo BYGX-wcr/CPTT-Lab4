@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <memory.h>
+#include "ircode.h"
 
 #define ENSURE_REG true
 #define ALLOCATE_REG false
