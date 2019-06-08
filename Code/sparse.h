@@ -1,3 +1,6 @@
+#ifndef SPARSE_H
+#define SPARSE_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -119,3 +122,5 @@ bool CompSt(struct Node* vertex, struct Type* type_inh);
 bool StmtList(struct Node* vertex, struct Type* type_inh);
 bool Stmt(struct Node* vertex, struct Type* type_inh);
 struct FieldList* Args(struct Node* vertex);
+
+#endif

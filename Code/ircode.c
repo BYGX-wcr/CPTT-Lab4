@@ -1,10 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <memory.h>
-#include <string.h>
-#include <assert.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include "ircode.h"
 
 /* Definitions of global data structure */
@@ -133,6 +126,15 @@ struct CodeListItem* end_code() {
     if (length == 0) return NULL;
 
     return ir_head.last;
+}
+// begin of the ir code list
+struct CodeListItem* begin_code() {
+    if (length == 0) return NULL;
+    return ir_head.next;
+}
+// total num of the ir instructions
+int code_num() {
+    return length;
 }
 
 //export the ir code list to file denoted by arg:output

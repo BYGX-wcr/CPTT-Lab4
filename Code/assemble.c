@@ -11,7 +11,7 @@ static const union MIPSRegs reg_set = //description of MIPS32 register set
 { "$0", "$1", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$t8",
   "$t9", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra" };
 
-static struct VarDesc var_list = { "HEAD", NULL, NULL, 0, NULL }; //the linked list of variant description
+static struct VarDesc var_list = { "HEAD", NULL, NULL, 0, 0, NULL }; //the linked list of variant description
 static struct VarDesc* reg_desc[REG_NUM]; //the array of occupation info of regs
 
 /* Assemble Functions */
@@ -40,7 +40,7 @@ void assemble(char* filename) {
                     struct VarDesc* var = search_var(ptr->right);
                     if (var == NULL) {
                         //create VarDesc for var
-                        var = create_var(ptr->right, block_len);
+                        var = create_var(ptr->right, block_len, 0); // todo !!
                     }
                     assert(var->used);
                     var->used[i] = true;
@@ -50,7 +50,7 @@ void assemble(char* filename) {
                     struct VarDesc* var = search_var(ptr->left);
                     if (var == NULL) {
                         //create VarDesc for var
-                        var = create_var(ptr->left, block_len);
+                        var = create_var(ptr->left, block_len, 0); // todo !!
                     }
                     assert(var->used);
                     var->used[i] = true;
@@ -85,7 +85,7 @@ void assemble(char* filename) {
 //initialization before assembling begins
 void assemble_init() {
     //initialize global data in assemble output
-    fprintf(ass_fp, ".data\n");
+    fprintf(ass_fp, ".data\n");     
     fprintf(ass_fp, "_prompt: .asciiz \"Enter an integer:\"");
     fprintf(ass_fp, "_ret: .asciiz \"\\n\"");
     //add read() and write() functions
@@ -108,6 +108,8 @@ void assemble_init() {
 
     //split basic blocks
     split_blocks();
+
+    printf("hello\n");
 
     //clear flags of registers
     clear_regs();
@@ -331,11 +333,11 @@ int search_best_reg(int pos) {
                     offset = j - pos;
                     break;
                 }
-                else if (pos > j) {
+                else if (pos > j) {             
                     break;
                 }
             }
-            
+
             if (offset > max) {
                 max = offset;
                 maxReg = i;
