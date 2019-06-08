@@ -41,6 +41,7 @@ void assemble(char* filename) {
                     if (var == NULL) {
                         //create VarDesc for var
                         var = create_var(ptr->right, block_len, 0); // todo !!
+
                     }
                     assert(var->used);
                     var->used[i] = true;
@@ -50,7 +51,9 @@ void assemble(char* filename) {
                     struct VarDesc* var = search_var(ptr->left);
                     if (var == NULL) {
                         //create VarDesc for var
+
                         var = create_var(ptr->left, block_len, 0); // todo !!
+
                     }
                     assert(var->used);
                     var->used[i] = true;

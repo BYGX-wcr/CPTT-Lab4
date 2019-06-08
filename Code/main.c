@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include "sparse.h"
+#include "assemble.h"
+#include "ircode.h"
 
 extern FILE* yyin;
 extern int yylineno;

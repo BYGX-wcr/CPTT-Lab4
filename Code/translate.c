@@ -44,7 +44,7 @@ void add_ch(char *dst, char ch);
 
 /* translate function declaration */
 
-void translate_semantic(struct Node *root, char *filename);
+void translate_semantic(struct Node *root);
 void translate_init();
 void translate_visit(struct Node *vertex);
 void translate_ExtDef(struct Node *vertex);
@@ -66,13 +66,12 @@ void translate_Cond(struct Node *vertex, char *label_true, char *label_false);
 
 /* function definition */
 
-void translate_semantic(struct Node *root, char *filename) {
+void translate_semantic(struct Node *root) {
     SAFE_ID(root, "Program");
 
     translate_init();
 
     if(legal_to_output()) {
-        FILE *file = fopen(filename,"w");
         translate_visit(root);
         // export_code(file);
         // fclose(file);
