@@ -6,20 +6,20 @@
 #include <stdlib.h>
 #include <memory.h>
 
-#define ENSURE_REG true
-#define ALLOCATE_REG false
+#define LEFT_OPT 1
+#define RIGHT_OPT 2
+#define RES_OPT 0
 
 #define REG_NUM 32
-#define REG_V 2
-#define REG_V_NUM 2
-#define REG_A 4
-#define REG_A_NUM 4
-#define REG_T 8
-#define REG_T_NUM 10
-#define REG_S 18
-#define REG_S_NUM 8
-#define AVA_REG 8
-#define AVA_REG_NUM 18
+#define REG_LEFT 8
+#define REG_LEFT_BUFFER 9
+#define REG_RIGHT 10
+#define REG_RIGHT_BUFFER 11
+#define REG_RES 12
+#define REG_RES_BUFFER 13
+
+#define ARG_OFFSET 8
+#define BASE_OFFSET 0
 
 union MIPSRegs { /* !!! the order of regs has been tuned */
     struct {
@@ -40,27 +40,30 @@ union MIPSRegs { /* !!! the order of regs has been tuned */
 
 struct VarDesc {
     char* id;
-    char* reg;
-    bool* used;
-    int block_len;
     int mem_offset;
+    int size;
     struct VarDesc* next;
+};
+
+struct FrameDesc {
+    struct FrameDesc* next;
+    struct FrameDesc* last;
+    struct VarDesc var_head;
 };
 
 void assemble(char* filename);
 void assemble_init();
-void split_blocks();
-void instr_transform(struct CodeListItem* ptr, int pos, FILE* output);
+void instr_transform(struct CodeListItem* ptr, FILE* output);
 
-int get_reg(char* var, int pos, bool flag, FILE* output);
-int search_empty_reg();
-int search_in_reg(char* id);
-int search_best_reg(int pos);
-void clear_regs();
-void spill_reg(int index, FILE* output);
+int get_reg(char* var, int flag, FILE* output);
+void spill_reg(FILE* output);
 
+void push_frame();
+void pop_frame();
+int get_cur_offset();
+int get_cur_arg_offset();
 struct VarDesc* search_var(char* id);
-struct VarDesc* create_var(char* id, int block_len, int mem_offset);
+struct VarDesc* create_var(char* id, int mem_offset, int size);
 
 bool is_imm(char* operand);
 

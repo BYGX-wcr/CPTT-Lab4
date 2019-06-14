@@ -5,75 +5,28 @@
 /* Definitions of global variants*/
 
 static FILE* ass_fp = NULL; //file pointer of assemble output
-static bool* codeblock_array = NULL; //block-split flags array of ir code list
 
 static const union MIPSRegs reg_set = //description of MIPS32 register set
 { "$0", "$1", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$t8",
   "$t9", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra" };
 
-static struct VarDesc var_list = { "HEAD", NULL, NULL, 0, NULL }; //the linked list of variant description
-static struct VarDesc* reg_desc[REG_NUM]; //the array of occupation info of regs
+static struct FrameDesc stack = { NULL, NULL }; //description of the dynamic stack
+static struct FrameDesc* cur_frame_ptr = &stack;
+static struct VarDesc res_buffer = { NULL, 0, 0, NULL };
 
 /* Assemble Functions */
 
+//assemble main function
 void assemble(char* filename) {
     //setup
     ass_fp = fopen(filename, "w");
     assemble_init();
 
-    int block_begin = 0;
-    int block_end = 0;
-    int block_len = 0;
-    int code_end = code_num();
-    struct CodeListItem* block_ptr = begin_code();
-    while (block_end != code_end) {
-        block_end = block_begin + 1;
-        block_len = block_end - block_begin;
-        while (block_end < code_end && codeblock_array[block_end] != true) block_end++;
+    struct CodeListItem* code_ptr = begin_code();
+    while (code_ptr != NULL) {
+        instr_transform(code_ptr, ass_fp);
 
-        //preprocess for the basic block
-        struct CodeListItem* ptr = block_ptr;
-        for (int i = block_begin; i < block_end; ++i) {
-            //resolve data structure
-            if (ptr->opt != OT_LABEL && ptr->opt != OT_GOTO) {
-                if (strlen(ptr->right) != 0) {
-                    struct VarDesc* var = search_var(ptr->right);
-                    if (var == NULL) {
-                        //create VarDesc for var
-                        var = create_var(ptr->right, block_len, );
-                    }
-                    assert(var->used);
-                    var->used[i] = true;
-                }
-
-                if (strlen(ptr->left) != 0) {
-                    struct VarDesc* var = search_var(ptr->left);
-                    if (var == NULL) {
-                        //create VarDesc for var
-                        var = create_var(ptr->left, block_len, );
-                    }
-                    assert(var->used);
-                    var->used[i] = true;
-                }
-            }
-
-            ptr = next_code(ptr);
-        }
-
-        //handle the basic block
-        ptr = block_ptr;
-        for (int i = block_begin; i < block_end; ++i) {
-            //transform code
-            assert(ptr);
-            instr_transform(ptr, i, ass_fp);
-
-            ptr = next_code(ptr);
-        }
-
-        //postprocess for the basic block
-        block_ptr = ptr;
-        block_begin = block_end;
-        /* TODO: clear regs and var_list */
+        code_ptr = next_code(code_ptr);
     }
 
     //clean
@@ -105,81 +58,65 @@ void assemble_init() {
                 syscall\n \
                 move $v0, $0\n \
                 jr $ra\n");
-
-    //split basic blocks
-    split_blocks();
-
-    //clear flags of registers
-    clear_regs();
-}
-
-//split the ir code list to basic blocks
-void split_blocks() {
-    int len = code_num();
-    if (len == 0) { panic("Cannot split blocks in empty ir code list!"); }
-
-    if (codeblock_array != NULL) free(codeblock_array);
-    codeblock_array = malloc(len);
-    memset(codeblock_array, 0, len);
-
-    struct CodeListItem* ptr = begin_code();
-    int counter = 0;
-    codeblock_array[0] = true;
-    while (ptr != NULL) {
-        if (ptr->opt == OT_LABEL) {
-            codeblock_array[counter] = true;
-        }
-        else if ((ptr->opt == OT_RELOP || ptr->opt == OT_GOTO) && counter + 1 < len) {
-            codeblock_array[counter + 1] = true;
-        }
-        else if (ptr->opt == OT_CALL) {
-            codeblock_array[counter] = true;
-            if (counter + 1 < len) codeblock_array[counter + 1] = true;
-        }
-
-        ptr = next_code(ptr);
-        counter++;
-    }
 }
 
 //transform an intermediate instruction to an assemble instruction
-void instr_transform(struct CodeListItem* ptr, int pos, FILE* output) {
+void instr_transform(struct CodeListItem* ptr, FILE* output) {
     switch (ptr->opt)
     {
         case OT_LABEL: {
-            fprintf(output, "  %s: \n", ptr->left);
+            fprintf(output, "%s: \n", ptr->left);
             break;
         }
         case OT_FUNC: {
             fprintf(output, "\n%s: \n", ptr->left);
+            fprintf(output, "  move %fp, %sp");
             break;
         }
         case OT_ASSIGN: {
-            int reg_x = get_reg(ptr->left, pos, ALLOCATE_REG, output);
+            int reg_x = get_reg(ptr->left, RES_OPT, output);
             if (is_imm(ptr->right)) {
                 fprintf(output, "  li %s, %s \n", reg_set.reg[reg_x], ptr->right);
             }
             else {
-                int reg_y = get_reg(ptr->right, pos, ENSURE_REG, output);
+                int reg_y = get_reg(ptr->right, RIGHT_OPT, output);
                 fprintf(output, "  move %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y]);
             }
+            spill_reg(output);
             break;
         }
         /* TODO: to be finished*/
         case OT_ADD: {
-            fprintf(output, "  %s := %s + %s \n", ptr->dst, ptr->left, ptr->right);
+            int reg_x = get_reg(ptr->dst, RES_OPT, output);
+            int reg_y = get_reg(ptr->left, LEFT_OPT, output);
+            int reg_z = get_reg(ptr->right, RIGHT_OPT, output);
+            fprintf(output, "  add %s, %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y], reg_set.reg[reg_z]);
+            spill_reg(output);
             break;
         }
         case OT_SUB: {
-            fprintf(output, "  %s := %s - %s \n", ptr->dst, ptr->left, ptr->right);
+            int reg_x = get_reg(ptr->dst, RES_OPT, output);
+            int reg_y = get_reg(ptr->left, LEFT_OPT, output);
+            int reg_z = get_reg(ptr->right, RIGHT_OPT, output);
+            fprintf(output, "  sub %s, %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y], reg_set.reg[reg_z]);
+            spill_reg(output);
             break;
         }
         case OT_MUL: {
-            fprintf(output, "  %s := %s * %s \n", ptr->dst, ptr->left, ptr->right);
+            int reg_x = get_reg(ptr->dst, RES_OPT, output);
+            int reg_y = get_reg(ptr->left, LEFT_OPT, output);
+            int reg_z = get_reg(ptr->right, RIGHT_OPT, output);
+            fprintf(output, "  mul %s, %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y], reg_set.reg[reg_z]);
+            spill_reg(output);
             break;
         }
         case OT_DIV: {
-            fprintf(output, "  %s := %s / %s \n", ptr->dst, ptr->left, ptr->right);
+            int reg_x = get_reg(ptr->dst, RES_OPT, output);
+            int reg_y = get_reg(ptr->left, LEFT_OPT, output);
+            int reg_z = get_reg(ptr->right, RIGHT_OPT, output);
+            fprintf(output, "  div %s, %s \n", reg_set.reg[reg_y], reg_set.reg[reg_z]);
+            fprintf(output, "  mflo %s", reg_set.reg[reg_x]);
+            spill_reg(output);
             break;
         }
         case OT_GOTO: {
@@ -187,8 +124,8 @@ void instr_transform(struct CodeListItem* ptr, int pos, FILE* output) {
             break;
         }
         case OT_RELOP: {
-            int reg_x = get_reg(ptr->left, pos, ALLOCATE_REG, output);
-            int reg_y = get_reg(ptr->right, pos, ALLOCATE_REG, output);
+            int reg_x = get_reg(ptr->left, LEFT_OPT, output);
+            int reg_y = get_reg(ptr->right, RIGHT_OPT, output);
             if (strcmp(ptr->extra, "==") == 0)
                 fprintf(output, "  beq %s, %s, %s \n", reg_set.reg[reg_x], reg_set.reg[reg_y], ptr->dst);
             else if (strcmp(ptr->extra, "!=") == 0)
@@ -206,31 +143,46 @@ void instr_transform(struct CodeListItem* ptr, int pos, FILE* output) {
             break;
         }
         case OT_RET: {
-            fprintf(output, "  RETURN %s \n", ptr->left);
+            int reg_x = get_reg(ptr->left, LEFT_OPT, output);
+            fprintf(output, "  move $v0, %s", reg_set.reg[reg_x]);
+            fprintf(output, "  jr $ra");
             break;
         }
         case OT_DEC: {
-            fprintf(output, "  DEC %s %s \n", ptr->left, ptr->right);
+            fprintf(output, "  addi $sp, $sp, -%d \n",  ptr->right);
+            int offset = get_cur_offset();
+            create_var(ptr->left, offset, atoi(ptr->right));
             break;
         }
         case OT_ARG: {
-            fprintf(output, "  ARG %s \n", ptr->left);
+            fprintf(output, "  addi $sp, $sp, -4 \n");
+            int reg_x = get_reg(ptr->left, LEFT_OPT, output);
+            fprintf(output, "  sw %s, 0(%sp)\n", reg_set.reg[reg_x]);
             break;
         }
         case OT_CALL: {
-            fprintf(output, "%s := CALL %s \n", ptr->left, ptr->right);
+            //save return address & $fp
+            fprintf(output, "  addi $sp, $sp, -4 \n");
+            fprintf(output, "  sw $ra, 0(%sp)\n");
+            fprintf(output, "  addi $sp, $sp, -4 \n");
+            fprintf(output, "  sw $fp, 0(%sp)\n");
+
+            fprintf(output, "  jal %s \n", ptr->right);
+
+            //recover return address & $fp
+            fprintf(output, "  move $sp, $fp");
+            fprintf(output, "  lw $fp, 0(%sp)\n");
+            fprintf(output, "  addi $sp, $sp, 4 \n");
+            fprintf(output, "  lw $ra, 0(%sp)\n");
+            fprintf(output, "  addi $sp, $sp, 4 \n");
+            int reg_x = get_reg(ptr->left, RES_OPT, output);
+            fprintf(output, "  move %s, $v0", reg_set.reg[reg_x]);
+            spill_reg(output);
             break;
         }
-        // case OT_PARAM: {
-        //     fprintf(output, "PARAM %s \n", ptr->left);
-        //     break;
-        // }
-        case OT_READ: {
-            fprintf(output, "READ %s \n", ptr->left);
-            break;
-        }
-        case OT_WRITE: {
-            fprintf(output, "WRITE %s \n", ptr->left);
+        case OT_PARAM: {
+            int offset = get_cur_arg_offset();
+            create_var(ptr->left, offset, 4);
             break;
         }
         default:
@@ -243,125 +195,118 @@ void instr_transform(struct CodeListItem* ptr, int pos, FILE* output) {
 
 //allocate an register for arg:var, arg:flag denotes the used method
 //return the string of allocated register
-int get_reg(char* var, int pos, bool flag, FILE* output) {
+int get_reg(char* var, int flag, FILE* output) {
     int res = -1;
-    if (flag == ENSURE_REG) {
-        //corresponding to ensure(var)
-        if (var[0] == '*') {// require dereference
-            /* TODO: to be confirmed */
-            var++;
-            if ((res = search_in_reg(var)) == -1) {
-                res = get_reg(var, pos, ALLOCATE_REG, output);
-                fprintf(output, "lw %s, %s \n", reg_set.reg[res], var);
-                reg_desc[res] = search_var(var);
-            }
+    int buffer = -1;
 
-            //allocate a temporary reg
-            int temp = -1;
-            if ((temp = search_empty_reg()) == -1) {
-                temp = search_best_reg(pos);
-                spill_reg(temp, output);
-            }
-            fprintf(output, "lw %s, 0(%s) \n", reg_set.reg[temp], reg_set.reg[res]);
-            res = temp;
+    struct VarDesc* var_ptr = search_var(var);
+    if (flag != 0) {
+        if (flag == LEFT_OPT) {
+            res = REG_LEFT;
+            buffer = REG_LEFT_BUFFER;
+        }
+        else if (flag == RIGHT_OPT) {
+            res = REG_RIGHT;
+            buffer = REG_RIGHT_BUFFER;
+        }
+        else
+            panic("Undefined flag!");
+
+        if (is_imm(var)) {
+            fprintf(output, "li %s, %d\n", reg_set.reg[res], var);
+        }
+        else if (var_ptr == NULL) {
+            panic("Use a variant before assigning a value to it!");
+        }
+        
+        //corresponding to left or right operands
+        if (var[0] == '*') {// require dereference
+            fprintf(output, "lw %s, %d($fp)\n", reg_set.reg[buffer], var_ptr->mem_offset);
+            fprintf(output, "lw %s, 0(%s)\n", reg_set.reg[res], reg_set.reg[buffer]);
         }
         else if (var[0] == '&') {// require reference
-            /* TODO: to be finished */
+            fprintf(output, "addi %s, $fp, %s\n", reg_set.reg[res], var_ptr->mem_offset);
         }
         else {// normal
-            if ((res = search_in_reg(var)) == -1) {
-                res = get_reg(var, pos, ALLOCATE_REG, output);
-                fprintf(output, "lw %s, %s \n", reg_set.reg[res], var);
-                reg_desc[res] = search_var(var);
-            }
+            fprintf(output, "lw %s, %d($fp)\n", reg_set.reg[res], var_ptr->mem_offset);
         }
     }
     else {
-        //corresponding to allocate(var)
+        if (var_ptr == NULL) {
+            int offset = get_cur_offset();
+            fprintf(output, "addi %sp, %sp, -4\n");
+            var_ptr = create_var(var, offset, 4);
+        }
+
+        res = REG_RES;
+        buffer = REG_RES_BUFFER;
+        //corresponding to destination
         if (var[0] == '*') {// require dereference
-            /* TODO: to be finished */
+            fprintf(output, "lw %s, %d($fp)\n", reg_set.reg[buffer], var_ptr->mem_offset);
         }
         else {// normal
-            if ((res = search_empty_reg()) == -1) {
-                res = search_best_reg(pos);
-                spill_reg(res, output);
-            }
+            fprintf(output, "addi %s, $fp, %s\n", reg_set.reg[buffer], var_ptr->mem_offset);
         }
     }
     return res;
 }
 
-//search an empty register
-//return the index of empty register if found, otherwise -1
-int search_empty_reg() {
-    for (int i = AVA_REG; i < AVA_REG + AVA_REG_NUM; ++i) {
-        if (reg_desc[i] == NULL) {
-            return i;
+//spill the value in the result register into memory
+void spill_reg(FILE* output) {
+    fprintf(output, "sw %s, 0(%s)", reg_set.reg[REG_RES], reg_set.reg[REG_RES_BUFFER]);
+}
+
+/* Operations on stack */
+
+void push_frame() {
+    struct FrameDesc* temp = malloc(sizeof(struct FrameDesc));
+    memset(temp, 0, sizeof(struct FrameDesc));
+    temp->last = cur_frame_ptr;
+    temp->next = NULL;
+    cur_frame_ptr = temp;
+}
+
+void pop_frame() {
+    if (cur_frame_ptr == &stack) return;
+
+    struct FrameDesc* temp = cur_frame_ptr;
+    cur_frame_ptr = temp->last;
+    free(temp);
+}
+
+int get_cur_offset() {
+    struct VarDesc* ptr = cur_frame_ptr->var_head.next;
+    int res = BASE_OFFSET;
+    while (ptr != NULL) {
+        if (ptr->mem_offset < 0) {
+            res -= ptr->size;
         }
+
+        ptr = ptr->next;
     }
 
-    return -1;
+    return res;
 }
 
-//search the register arg:id existing in
-//return the index of target register if found, otherwise -1
-int search_in_reg(char* id) {
-    for (int i = AVA_REG; i < AVA_REG + AVA_REG_NUM; ++i) {
-        if (reg_desc[i] != NULL && strcmp(reg_desc[i]->id, id) == 0) {
-            return i;
+int get_cur_arg_offset() {
+    struct VarDesc* ptr = cur_frame_ptr->var_head.next;
+    int res = ARG_OFFSET;
+    while (ptr != NULL) {
+        if (ptr->mem_offset >= 0) {
+            res += ptr->size;
         }
+        else {
+            break;
+        }
+
+        ptr = ptr->next;
     }
 
-    return -1;
+    return res;
 }
-
-//search the best register in the context of arg:pos
-//return the index of best register
-int search_best_reg(int pos) {
-    int max = -1;
-    int maxReg = -1;
-    for (int i = AVA_REG; i < AVA_REG + AVA_REG_NUM; ++i) {
-        if (reg_desc[i] == NULL) {
-            return i;
-        }
-        else if (reg_desc[i] != NULL) {
-            int offset = 0x7fffffff;
-            for (int j = reg_desc[i]->block_len - 1; j >= 0; --j) {
-                if (reg_desc[i]->used[j] && pos <= j) {
-                    offset = j - pos;
-                    break;
-                }
-                else if (pos > j) {
-                    break;
-                }
-            }
-            
-            if (offset > max) {
-                max = offset;
-                maxReg = i;
-            }
-        }
-    }
-
-    assert(maxReg != -1);
-    return maxReg;
-}
-
-//reset the flags array of registers
-void clear_regs() {
-    /* TODO: spill regs */
-    memset(reg_desc, 0, REG_NUM * sizeof(struct VarDesc*));
-}
-
-//spill the value in register into memory
-void spill_reg(int index, FILE* output) {
-    //
-}
-
-/* Operations on VarDesc list*/
 
 struct VarDesc* search_var(char* id) {
-    struct VarDesc* ptr = var_list.next;
+    struct VarDesc* ptr = cur_frame_ptr->var_head.next;
     while (ptr != NULL) {
         if (strcmp(ptr->id, id) == 0) {
             return ptr;
@@ -373,18 +318,15 @@ struct VarDesc* search_var(char* id) {
     return ptr;
 }
 
-struct VarDesc* create_var(char* id, int block_len, int mem_offset) {
-    struct VarDesc* ptr = &var_list;
+struct VarDesc* create_var(char* id, int mem_offset, int size) {
+    struct VarDesc* ptr = &cur_frame_ptr->var_head;
     while (ptr->next != NULL) {
         ptr = ptr->next;
     }
 
     struct VarDesc* new_var = malloc(sizeof(struct VarDesc));
+    memset(new_var, 0, sizeof(struct VarDesc));
     copy_str(&new_var->id, id);
-    new_var->reg = NULL;
-    new_var->used = malloc(block_len);
-    memset(new_var->used, 0, block_len);
-    new_var->block_len = block_len;
     new_var->mem_offset = mem_offset;
     new_var->next = NULL;
     ptr->next = new_var;
