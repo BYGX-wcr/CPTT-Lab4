@@ -48,8 +48,6 @@ struct VarDesc {
 };
 
 struct FrameDesc {
-    struct FrameDesc* next;
-    struct FrameDesc* last;
     struct VarDesc var_head;
     int arg_num;
 };
@@ -61,8 +59,7 @@ void instr_transform(struct CodeListItem* ptr, FILE* output);
 int get_reg(char* var, int flag, FILE* output);
 void spill_reg(FILE* output);
 
-void push_frame();
-void pop_frame();
+void switch_frame();
 int get_cur_offset();
 int get_cur_arg_offset();
 struct VarDesc* search_var(char* id);

@@ -10,7 +10,7 @@ static const union MIPSRegs reg_set = //description of MIPS32 register set
 { "$0", "$1", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$t8",
   "$t9", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra" };
 
-static struct FrameDesc stack = { NULL, NULL }; //description of the dynamic stack
+static struct FrameDesc stack; //description of the dynamic stack
 static struct FrameDesc* cur_frame_ptr = &stack;
 static struct VarDesc res_buffer = { NULL, 0, 0, NULL };
 
@@ -79,6 +79,7 @@ void instr_transform(struct CodeListItem* ptr, FILE* output) {
         case OT_FUNC: {
             fprintf(output, "\n%s: \n", ptr->left);
             fprintf(output, "  move $fp, $sp\n");
+            switch_frame();
             break;
         }
         case OT_ASSIGN: {
@@ -123,7 +124,7 @@ void instr_transform(struct CodeListItem* ptr, FILE* output) {
             int reg_y = get_reg(ptr->left, LEFT_OPT, output);
             int reg_z = get_reg(ptr->right, RIGHT_OPT, output);
             fprintf(output, "  div %s, %s \n", reg_set.reg[reg_y], reg_set.reg[reg_z]);
-            fprintf(output, "  mflo %s", reg_set.reg[reg_x]);
+            fprintf(output, "  mflo %s\n", reg_set.reg[reg_x]);
             spill_reg(output);
             break;
         }
@@ -159,7 +160,7 @@ void instr_transform(struct CodeListItem* ptr, FILE* output) {
         case OT_DEC: {
             fprintf(output, "  addi $sp, $sp, -%d \n",  atoi(ptr->right));
             int offset = get_cur_offset();
-            create_var(ptr->left, offset, atoi(ptr->right));
+            create_var(ptr->left, offset - atoi(ptr->right), atoi(ptr->right));
             break;
         }
         case OT_ARG: {
@@ -186,7 +187,7 @@ void instr_transform(struct CodeListItem* ptr, FILE* output) {
             fprintf(output, "  addi $sp, $sp, 4 \n");
             fprintf(output, "  addi $sp, $sp, %d \n", cur_frame_ptr->arg_num * 4); //pop args for callee
             cur_frame_ptr->arg_num = 0;
-            
+
             int reg_x = get_reg(ptr->left, RES_OPT, output);
             fprintf(output, "  move %s, $v0\n", reg_set.reg[reg_x]);
             spill_reg(output);
@@ -268,7 +269,11 @@ int get_reg(char* var, int flag, FILE* output) {
         }
         else {//non-intermediate number
             if (var_ptr == NULL) {
-                panic("Use a variant before assigning a value to it!");
+                var_ptr = search_var(var + 1);
+                if (var_ptr == NULL) {
+                    printf("Var: %s\n", var);
+                    panic("Use a variant before assigning a value to it!");
+                }
             }
 
             if (var[0] == '*') {// require dereference
@@ -285,9 +290,12 @@ int get_reg(char* var, int flag, FILE* output) {
     }
     else {
         if (var_ptr == NULL) {
-            int offset = get_cur_offset();
-            fprintf(output, "  addi $sp, $sp, -4\n");
-            var_ptr = create_var(var, offset, 4);
+            var_ptr = search_var(var + 1);
+            if (var_ptr == NULL) {
+                int offset = get_cur_offset();
+                fprintf(output, "  addi $sp, $sp, -4\n");
+                var_ptr = create_var(var, offset - 4, 4);
+            }
         }
 
         res = REG_RES;
@@ -310,20 +318,8 @@ void spill_reg(FILE* output) {
 
 /* Operations on stack */
 
-void push_frame() {
-    struct FrameDesc* temp = malloc(sizeof(struct FrameDesc));
-    memset(temp, 0, sizeof(struct FrameDesc));
-    temp->last = cur_frame_ptr;
-    temp->next = NULL;
-    cur_frame_ptr = temp;
-}
-
-void pop_frame() {
-    if (cur_frame_ptr == &stack) return;
-
-    struct FrameDesc* temp = cur_frame_ptr;
-    cur_frame_ptr = temp->last;
-    free(temp);
+void switch_frame() {
+    memset(cur_frame_ptr, 0, sizeof(struct FrameDesc));
 }
 
 int get_cur_offset() {
@@ -361,7 +357,7 @@ struct VarDesc* search_var(char* id) {
     struct VarDesc* ptr = cur_frame_ptr->var_head.next;
     while (ptr != NULL) {
         if (strcmp(ptr->id, id) == 0) {
-            printf("search %s, offset: %d, size: %d\n", id, ptr->mem_offset, ptr->size);
+            //printf("search %s, offset: %d, size: %d\n", id, ptr->mem_offset, ptr->size);
             return ptr;
         }
 

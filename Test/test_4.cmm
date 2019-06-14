@@ -1,31 +1,19 @@
-struct Operands
+int fact(int n)
 {
-   int o1;
-   int d;
-   struct yy {
-      int m;
-      int n;
-      struct dd{
-         int x;
-         int y;
-         int a[5];
-      }k;
-   }c;
-   int o2;
-};
-int wdy(struct Operands mm, int t2) {
-   return mm.o1 + mm.o2 + t2;
+if (n == 1)
+return n;
+else
+return (n * fact(n - 1));
 }
-int test(int h) {
-   return h;
-}
+
 int main()
 {
-struct Operands p;
-int v2;
-p.o1 = 1;
-p.o2 = 2;
-v2 = wdy(p, p.o2);
-write(v2);
+int m, result;
+m = read();
+if (m > 1)
+result = fact(m);
+else
+result = 1;
+write(result);
 return 0;
-} 
+}
