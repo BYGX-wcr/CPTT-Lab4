@@ -51,6 +51,7 @@ struct FrameDesc {
     struct FrameDesc* next;
     struct FrameDesc* last;
     struct VarDesc var_head;
+    int arg_num;
 };
 
 void assemble(char* filename);

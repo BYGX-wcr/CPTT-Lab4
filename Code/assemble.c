@@ -48,6 +48,7 @@ void assemble_init() {
     //add read() and write() functions
     fprintf(ass_fp, 
     "\nread:\n \
+    move $fp, $sp\n \
     li $v0, 4\n \
     la $a0, _prompt\n \
     syscall\n \
@@ -57,6 +58,7 @@ void assemble_init() {
 
     fprintf(ass_fp, 
     "\nwrite:\n \
+    move $fp, $sp\n \
     li $v0, 1\n \
     syscall\n \
     li $v0, 4\n \
@@ -164,6 +166,7 @@ void instr_transform(struct CodeListItem* ptr, FILE* output) {
             fprintf(output, "  addi $sp, $sp, -4 \n");
             int reg_x = get_reg(ptr->left, LEFT_OPT, output);
             fprintf(output, "  sw %s, 0($sp)\n", reg_set.reg[reg_x]);
+            cur_frame_ptr->arg_num += 1;
             break;
         }
         case OT_CALL: {
@@ -181,6 +184,9 @@ void instr_transform(struct CodeListItem* ptr, FILE* output) {
             fprintf(output, "  addi $sp, $sp, 4 \n");
             fprintf(output, "  lw $ra, 0($sp)\n");
             fprintf(output, "  addi $sp, $sp, 4 \n");
+            fprintf(output, "  addi $sp, $sp, %d \n", cur_frame_ptr->arg_num * 4); //pop args for callee
+            cur_frame_ptr->arg_num = 0;
+            
             int reg_x = get_reg(ptr->left, RES_OPT, output);
             fprintf(output, "  move %s, $v0\n", reg_set.reg[reg_x]);
             spill_reg(output);
@@ -212,7 +218,7 @@ void instr_transform(struct CodeListItem* ptr, FILE* output) {
         case OT_WRITE: {
             fprintf(output, "  addi $sp, $sp, -4 \n");
             int reg_x = get_reg(ptr->left, LEFT_OPT, output);
-            fprintf(output, "  sw %s, 0($sp)\n", reg_set.reg[reg_x]);
+            fprintf(output, "  move $a0, %s\n", reg_set.reg[reg_x]);
 
             fprintf(output, "  addi $sp, $sp, -4 \n");
             fprintf(output, "  sw $ra, 0($sp)\n");
@@ -324,7 +330,7 @@ int get_cur_offset() {
     struct VarDesc* ptr = cur_frame_ptr->var_head.next;
     int res = BASE_OFFSET;
     while (ptr != NULL) {
-        if (ptr->mem_offset < 0) {
+        if (ptr->mem_offset <= 0) {
             res -= ptr->size;
         }
 
@@ -338,7 +344,7 @@ int get_cur_arg_offset() {
     struct VarDesc* ptr = cur_frame_ptr->var_head.next;
     int res = ARG_OFFSET;
     while (ptr != NULL) {
-        if (ptr->mem_offset >= 0) {
+        if (ptr->mem_offset > 0) {
             res += ptr->size;
         }
         else {
@@ -355,6 +361,7 @@ struct VarDesc* search_var(char* id) {
     struct VarDesc* ptr = cur_frame_ptr->var_head.next;
     while (ptr != NULL) {
         if (strcmp(ptr->id, id) == 0) {
+            printf("search %s, offset: %d, size: %d\n", id, ptr->mem_offset, ptr->size);
             return ptr;
         }
 
@@ -365,6 +372,7 @@ struct VarDesc* search_var(char* id) {
 }
 
 struct VarDesc* create_var(char* id, int mem_offset, int size) {
+    printf("create %s, offset: %d, size: %d\n", id, mem_offset, size);
     struct VarDesc* ptr = &cur_frame_ptr->var_head;
     while (ptr->next != NULL) {
         ptr = ptr->next;
@@ -374,6 +382,7 @@ struct VarDesc* create_var(char* id, int mem_offset, int size) {
     memset(new_var, 0, sizeof(struct VarDesc));
     copy_str(&new_var->id, id);
     new_var->mem_offset = mem_offset;
+    new_var->size = size;
     new_var->next = NULL;
     ptr->next = new_var;
 
