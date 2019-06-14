@@ -21,6 +21,8 @@
 #define ARG_OFFSET 8
 #define BASE_OFFSET 0
 
+extern struct CodeListItem;
+
 union MIPSRegs { /* !!! the order of regs has been tuned */
     struct {
         char* zero;

@@ -1,6 +1,6 @@
+#include "assemble.h"
 #include "ircode.h"
 #include "sparse.h"
-#include "assemble.h"
 
 /* Definitions of global variants*/
 
@@ -37,27 +37,33 @@ void assemble(char* filename) {
 
 //initialization before assembling begins
 void assemble_init() {
-    //initialize global data in assemble output
+    //initialize global data&symbol in assemble output
     fprintf(ass_fp, ".data\n");
-    fprintf(ass_fp, "_prompt: .asciiz \"Enter an integer:\"");
-    fprintf(ass_fp, "_ret: .asciiz \"\\n\"");
-    //add read() and write() functions
-    fprintf(ass_fp, "\nread:\n \
-                  li $v0, 4\n \
-                  la $a0, _prompt\n \
-                  syscall\n \
-                  li $v0, 5\n \
-                  syscall\n \
-                  jr $ra\n");
+    fprintf(ass_fp, "_prompt: .asciiz \"Enter an integer:\"\n");
+    fprintf(ass_fp, "_ret: .asciiz \"\\n\"\n");
 
-    fprintf(ass_fp, "\nwrite:\n \
-                li $v0, 1\n \
-                syscall\n \
-                li $v0, 4\n \
-                la $a0, _ret\n \
-                syscall\n \
-                move $v0, $0\n \
-                jr $ra\n");
+    fprintf(ass_fp, ".globl main\n");
+    fprintf(ass_fp, ".text\n");
+
+    //add read() and write() functions
+    fprintf(ass_fp, 
+    "\nread:\n \
+    li $v0, 4\n \
+    la $a0, _prompt\n \
+    syscall\n \
+    li $v0, 5\n \
+    syscall\n \
+    jr $ra\n");
+
+    fprintf(ass_fp, 
+    "\nwrite:\n \
+    li $v0, 1\n \
+    syscall\n \
+    li $v0, 4\n \
+    la $a0, _ret\n \
+    syscall\n \
+    move $v0, $0\n \
+    jr $ra\n");
 }
 
 //transform an intermediate instruction to an assemble instruction
@@ -70,13 +76,13 @@ void instr_transform(struct CodeListItem* ptr, FILE* output) {
         }
         case OT_FUNC: {
             fprintf(output, "\n%s: \n", ptr->left);
-            fprintf(output, "  move %fp, %sp");
+            fprintf(output, "  move $fp, $sp\n");
             break;
         }
         case OT_ASSIGN: {
             int reg_x = get_reg(ptr->left, RES_OPT, output);
             if (is_imm(ptr->right)) {
-                fprintf(output, "  li %s, %s \n", reg_set.reg[reg_x], ptr->right);
+                fprintf(output, "  li %s, %s \n", reg_set.reg[reg_x], (ptr->right + 1));
             }
             else {
                 int reg_y = get_reg(ptr->right, RIGHT_OPT, output);
@@ -144,12 +150,12 @@ void instr_transform(struct CodeListItem* ptr, FILE* output) {
         }
         case OT_RET: {
             int reg_x = get_reg(ptr->left, LEFT_OPT, output);
-            fprintf(output, "  move $v0, %s", reg_set.reg[reg_x]);
-            fprintf(output, "  jr $ra");
+            fprintf(output, "  move $v0, %s\n", reg_set.reg[reg_x]);
+            fprintf(output, "  jr $ra\n");
             break;
         }
         case OT_DEC: {
-            fprintf(output, "  addi $sp, $sp, -%d \n",  ptr->right);
+            fprintf(output, "  addi $sp, $sp, -%d \n",  atoi(ptr->right));
             int offset = get_cur_offset();
             create_var(ptr->left, offset, atoi(ptr->right));
             break;
@@ -157,26 +163,26 @@ void instr_transform(struct CodeListItem* ptr, FILE* output) {
         case OT_ARG: {
             fprintf(output, "  addi $sp, $sp, -4 \n");
             int reg_x = get_reg(ptr->left, LEFT_OPT, output);
-            fprintf(output, "  sw %s, 0(%sp)\n", reg_set.reg[reg_x]);
+            fprintf(output, "  sw %s, 0($sp)\n", reg_set.reg[reg_x]);
             break;
         }
         case OT_CALL: {
             //save return address & $fp
             fprintf(output, "  addi $sp, $sp, -4 \n");
-            fprintf(output, "  sw $ra, 0(%sp)\n");
+            fprintf(output, "  sw $ra, 0($sp)\n");
             fprintf(output, "  addi $sp, $sp, -4 \n");
-            fprintf(output, "  sw $fp, 0(%sp)\n");
+            fprintf(output, "  sw $fp, 0($sp)\n");
 
             fprintf(output, "  jal %s \n", ptr->right);
 
             //recover return address & $fp
-            fprintf(output, "  move $sp, $fp");
-            fprintf(output, "  lw $fp, 0(%sp)\n");
+            fprintf(output, "  move $sp, $fp\n");
+            fprintf(output, "  lw $fp, 0($sp)\n");
             fprintf(output, "  addi $sp, $sp, 4 \n");
-            fprintf(output, "  lw $ra, 0(%sp)\n");
+            fprintf(output, "  lw $ra, 0($sp)\n");
             fprintf(output, "  addi $sp, $sp, 4 \n");
             int reg_x = get_reg(ptr->left, RES_OPT, output);
-            fprintf(output, "  move %s, $v0", reg_set.reg[reg_x]);
+            fprintf(output, "  move %s, $v0\n", reg_set.reg[reg_x]);
             spill_reg(output);
             break;
         }
@@ -185,7 +191,45 @@ void instr_transform(struct CodeListItem* ptr, FILE* output) {
             create_var(ptr->left, offset, 4);
             break;
         }
+        case OT_READ: {
+            fprintf(output, "  addi $sp, $sp, -4 \n");
+            fprintf(output, "  sw $ra, 0($sp)\n");
+            fprintf(output, "  addi $sp, $sp, -4 \n");
+            fprintf(output, "  sw $fp, 0($sp)\n");
+
+            fprintf(output, "  jal read \n");
+
+            fprintf(output, "  move $sp, $fp\n");
+            fprintf(output, "  lw $fp, 0($sp)\n");
+            fprintf(output, "  addi $sp, $sp, 4 \n");
+            fprintf(output, "  lw $ra, 0($sp)\n");
+            fprintf(output, "  addi $sp, $sp, 4 \n");
+            int reg_x = get_reg(ptr->left, RES_OPT, output);
+            fprintf(output, "  move %s, $v0\n", reg_set.reg[reg_x]);
+            spill_reg(output);
+            break;
+        }
+        case OT_WRITE: {
+            fprintf(output, "  addi $sp, $sp, -4 \n");
+            int reg_x = get_reg(ptr->left, LEFT_OPT, output);
+            fprintf(output, "  sw %s, 0($sp)\n", reg_set.reg[reg_x]);
+
+            fprintf(output, "  addi $sp, $sp, -4 \n");
+            fprintf(output, "  sw $ra, 0($sp)\n");
+            fprintf(output, "  addi $sp, $sp, -4 \n");
+            fprintf(output, "  sw $fp, 0($sp)\n");
+
+            fprintf(output, "  jal write \n");
+
+            fprintf(output, "  move $sp, $fp\n");
+            fprintf(output, "  lw $fp, 0($sp)\n");
+            fprintf(output, "  addi $sp, $sp, 4 \n");
+            fprintf(output, "  lw $ra, 0($sp)\n");
+            fprintf(output, "  addi $sp, $sp, 4 \n");
+            break;
+        }
         default:
+            printf("opt: %d\n", ptr->opt);
             assert(0);
             break;
     }
@@ -212,29 +256,31 @@ int get_reg(char* var, int flag, FILE* output) {
         else
             panic("Undefined flag!");
 
-        if (is_imm(var)) {
-            fprintf(output, "li %s, %d\n", reg_set.reg[res], var);
-        }
-        else if (var_ptr == NULL) {
-            panic("Use a variant before assigning a value to it!");
-        }
-        
         //corresponding to left or right operands
-        if (var[0] == '*') {// require dereference
-            fprintf(output, "lw %s, %d($fp)\n", reg_set.reg[buffer], var_ptr->mem_offset);
-            fprintf(output, "lw %s, 0(%s)\n", reg_set.reg[res], reg_set.reg[buffer]);
+        if (is_imm(var)) {
+            fprintf(output, "  li %s, %d\n", reg_set.reg[res], atoi(var + 1));
         }
-        else if (var[0] == '&') {// require reference
-            fprintf(output, "addi %s, $fp, %s\n", reg_set.reg[res], var_ptr->mem_offset);
-        }
-        else {// normal
-            fprintf(output, "lw %s, %d($fp)\n", reg_set.reg[res], var_ptr->mem_offset);
+        else {//non-intermediate number
+            if (var_ptr == NULL) {
+                panic("Use a variant before assigning a value to it!");
+            }
+
+            if (var[0] == '*') {// require dereference
+                fprintf(output, "  lw %s, %d($fp)\n", reg_set.reg[buffer], var_ptr->mem_offset);
+                fprintf(output, "  lw %s, 0(%s)\n", reg_set.reg[res], reg_set.reg[buffer]);
+            }
+            else if (var[0] == '&') {// require reference
+                fprintf(output, "  addi %s, $fp, %d\n", reg_set.reg[res], var_ptr->mem_offset);
+            }
+            else {// normal
+                fprintf(output, "  lw %s, %d($fp)\n", reg_set.reg[res], var_ptr->mem_offset);
+            }
         }
     }
     else {
         if (var_ptr == NULL) {
             int offset = get_cur_offset();
-            fprintf(output, "addi %sp, %sp, -4\n");
+            fprintf(output, "  addi $sp, $sp, -4\n");
             var_ptr = create_var(var, offset, 4);
         }
 
@@ -242,10 +288,10 @@ int get_reg(char* var, int flag, FILE* output) {
         buffer = REG_RES_BUFFER;
         //corresponding to destination
         if (var[0] == '*') {// require dereference
-            fprintf(output, "lw %s, %d($fp)\n", reg_set.reg[buffer], var_ptr->mem_offset);
+            fprintf(output, "  lw %s, %d($fp)\n", reg_set.reg[buffer], var_ptr->mem_offset);
         }
         else {// normal
-            fprintf(output, "addi %s, $fp, %s\n", reg_set.reg[buffer], var_ptr->mem_offset);
+            fprintf(output, "  addi %s, $fp, %d\n", reg_set.reg[buffer], var_ptr->mem_offset);
         }
     }
     return res;
@@ -253,7 +299,7 @@ int get_reg(char* var, int flag, FILE* output) {
 
 //spill the value in the result register into memory
 void spill_reg(FILE* output) {
-    fprintf(output, "sw %s, 0(%s)", reg_set.reg[REG_RES], reg_set.reg[REG_RES_BUFFER]);
+    fprintf(output, "  sw %s, 0(%s)\n", reg_set.reg[REG_RES], reg_set.reg[REG_RES_BUFFER]);
 }
 
 /* Operations on stack */

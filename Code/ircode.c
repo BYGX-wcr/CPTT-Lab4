@@ -1,10 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <memory.h>
-#include <string.h>
-#include <assert.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include "ircode.h"
 
 /* Definitions of global data structure */
@@ -125,6 +118,14 @@ struct CodeListItem* next_code(struct CodeListItem* target) {
     else {
         return target->next;
     }
+}
+
+//get the first item of ir code list
+//return NULL if length = 0, otherwise return the ptr of first item
+struct CodeListItem* begin_code() {
+    if (length == 0) return NULL;
+
+    return ir_head.next;
 }
 
 //get the final item of ir code list
